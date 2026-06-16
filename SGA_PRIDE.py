@@ -23,7 +23,7 @@ while True:
     print("Red: ", Red, "Green: ", Green, "Blue: ", Blue)
     screen.fill((abs(Red)*255, abs(Green)*255, abs(Blue)*255))
 
-    screen.blit(Icon, (100, 100))
+    screen.blit(Icon, pg.mouse.get_pos())
 
     pg.display.flip()
 
