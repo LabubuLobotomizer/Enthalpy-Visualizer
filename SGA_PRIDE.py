@@ -8,7 +8,7 @@ Screen_Size_Height = 720
 Screen_Size_Width = 1280
 screen = pg.display.set_mode((Screen_Size_Width, Screen_Size_Height))
 pg.display.set_caption("Fishing Game")
-Time = pg.Clock()
+Time = pg.time.Clock()
 Icon = pg.image.load("SGA.jpg")
 
 #Load other images used
