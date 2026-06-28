@@ -10,7 +10,10 @@ def Newton_Method(Number):
 
 L_Square_Root = []
 
-for i in range(1, 100000000):
+for i in range(1, 100):
     L_Square_Root.append([i, Newton_Method(i)])
 
 print (L_Square_Root)
+
+#This is cool and I like how it works. Also, I would recommend pull requests instead of adding files:
+#There might be a latency
