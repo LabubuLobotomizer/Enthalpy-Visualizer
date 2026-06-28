@@ -2,7 +2,7 @@ import pygame as pg
 import numpy as np
 import random as rand
 
-pg.init
+pg.init()
 
 #Starting the view at (0,0)
 camera_X = 0
@@ -94,7 +94,7 @@ def draw_grid(grid_size, zoom_factor, camera_x, camera_y, color: tuple = (int, i
         tempDrawY = getScreenCoordinates(0, tempY, camera_x, camera_y, zoom_factor)[1]
 
 def drawCircles(CameraX, CameraY, ZoomFactor):
-    global circlesList, screenWidth, screenHeight
+    global circlesList, screenWidth, screenHeight   #Global is not fetching global variables (python already does this if not initialized within the function), instead, global lets functions change global variables inside the function.
     for Circle in circlesList:
         print()
         pg.draw.circle(screen, Circle[2], (getScreenCoordinates(Circle[0], Circle[1], CameraX, CameraY, ZoomFactor)), Circle[3]*zoomFactor)
