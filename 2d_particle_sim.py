@@ -55,9 +55,9 @@ while running:
     pg.draw.circle(screen,'black', (FirstParticleFlyer.get_p(),height/2),radius)
     pg.draw.circle(screen, 'black', (SecondParticle.get_p(), height / 2), radius)
     pg.draw.line(screen,'white', (FirstParticleFlyer.get_p(), height/2),
-                 ((FirstParticleFlyer.get_p()+FirstParticleFlyer.get_v()*radius*dt), (height/2)))
+                 ((FirstParticleFlyer.get_p()+FirstParticleFlyer.get_v()*radius*dt/2), (height/2)))
     pg.draw.line(screen, 'white', (SecondParticle.get_p(), height / 2),
-                 ((SecondParticle.get_p() + SecondParticle.get_v() * radius * dt), (height / 2)))
+                 ((SecondParticle.get_p() + SecondParticle.get_v() * radius * dt/2), (height / 2)))
     pg.display.flip()
 
     for event in pg.event.get():
