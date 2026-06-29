@@ -2,7 +2,7 @@ import pygame as pg
 import numpy as np
 import random as rand
 
-pg.init
+pg.init()
 
 #Zoom base is the regular amount of pixels to be shown in the X direction, zoom factor is how zoomed out you are
 zoomBase = 1280
@@ -182,15 +182,9 @@ def updateCircles():
                     
                     #Here we also have to separate overlapped circles
                     overlap = MainCircleR+SecondaryCircleR - np.sqrt(((MainCircleX-SecondaryCircleX)**2) + ((MainCircleY-SecondaryCircleY)**2))
-                    if MainCircleX > SecondaryCircleX:
-                        Circle.updatePos(QCircle, NewX = MainCircleX+(normalVector[0]*overlap))
-                    else:
-                        Circle.updatePos(QCircle, NewX = MainCircleX-(normalVector[0]*overlap))
-                    if MainCircleY > SecondaryCircleY:
-                        Circle.updatePos(QCircle, NewY = MainCircleY+(normalVector[1]*overlap))
-                    else:
-                        Circle.updatePos(QCircle, NewY = MainCircleY-(normalVector[1]*overlap))
-                    
+                    MainCircleX += normalVector[0] * overlap
+                    MainCircleY += normalVector[1] * overlap
+                    Circle.updatePos(QCircle, NewX=MainCircleX, NewY=MainCircleY)       
     #Now we check if circles are colliding with edges of our border
     global borderWidth, borderHeight
     for CCircle in circlesList:
@@ -205,13 +199,20 @@ def updateCircles():
     #Now we finally actually move the circles
     for PCircle in circlesList:
         Circle.updatePos(PCircle, NewX=Circle.getX(PCircle)+Circle.getXV(PCircle), NewY=Circle.getY(PCircle)+Circle.getYV(PCircle))
+    
 
+def CalcTotalVelo():
+    global circlesList
+    TotalVelo = 0
+    for I in circlesList:
+        TotalVelo += Circle.getXV(I)**2 + Circle.getYV(I)**2
+    TotalVelo = np.sqrt(TotalVelo)
+    return(str(TotalVelo))
 
 
 
                     
-
-
+font = pg.font.SysFont("Arial", 36)
 #Running makes sure we didn't cancel
 #Unlocked is just a toggle to lock key inputs, currently unused, but could be useful for a pause menu
 running = True
@@ -220,14 +221,14 @@ while running:
     #Locking the script at 60fps
     clock.tick(60)
 
-
     screen.fill((40, 40, 45))  # Clear the screen with black
     draw_grid(gridSize, zoomFactor, cameraViewX, cameraViewY, (0, 0, 0)) #Call the function above
     drawBorder(borderWidth, borderHeight)
     updateCircles()
     drawCircles(cameraViewX, cameraViewY, zoomFactor) #Draws all the circles
     pg.draw.circle(screen, (255,0,0), getScreenCoordinates(0, 0, cameraViewX, cameraViewY, zoomFactor), 2)
-
+    TotalVelocityText = font.render("Total Velocity: " + CalcTotalVelo(), True, (255, 255, 255))
+    screen.blit(TotalVelocityText, (50,50))
 
     pg.display.flip()  # Update the display
 
@@ -258,4 +259,4 @@ while running:
         if event.type == pg.MOUSEBUTTONDOWN:
             if event.button == 1:
                 circleWorld = getWorldCoordinates(pg.mouse.get_pos()[0], pg.mouse.get_pos()[1], cameraViewX, cameraViewY, zoomFactor)
-                circlesList.append(Circle(circleWorld[0], circleWorld[1], (rand.randint(0,255), rand.randint(0,255), rand.randint(0,255)), 15, rand.randint(-10, 10), rand.randint(-10, 10)))
+                circlesList.append(Circle(circleWorld[0], circleWorld[1], (rand.randint(0,255), rand.randint(0,255), rand.randint(0,255)), rand.randint(5,20), rand.randint(-10, 10), rand.randint(-10, 10)))
