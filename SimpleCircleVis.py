@@ -184,9 +184,9 @@ def updateCircles():
                     overlap = MainCircleR+SecondaryCircleR - np.sqrt(((MainCircleX-SecondaryCircleX)**2) + ((MainCircleY-SecondaryCircleY)**2))
                     MainCircleX += normalVector[0] * overlap
                     MainCircleY += normalVector[1] * overlap
-                    Circle.updatePos(QCircle, NewX=MainCircleX, NewY=MainCircleY)       
-    #Now we check if circles are colliding with edges of our border
+                    Circle.updatePos(QCircle, NewX=MainCircleX, NewY=MainCircleY)
     global borderWidth, borderHeight
+    #Now we check if circles are colliding with edges of our border
     for CCircle in circlesList:
         if Circle.getX(CCircle) > borderWidth/2:
             Circle.updateVelo(CCircle, NewXV=Circle.getXV(CCircle)*-1)
@@ -196,6 +196,16 @@ def updateCircles():
             Circle.updateVelo(CCircle, NewYV=Circle.getYV(CCircle)*-1)
         if Circle.getY(CCircle) > 1*borderHeight/2:
             Circle.updateVelo(CCircle, NewYV=Circle.getYV(CCircle)*-1)
+    #Now we gotta correct ones still outside of the border due to errors
+    for CCircle in circlesList:
+        if Circle.getX(CCircle) > borderWidth/2:
+            Circle.updatePos(CCircle, NewX=((borderWidth/2) - 1))
+        if Circle.getX(CCircle) < -1*borderWidth/2:
+            Circle.updatePos(CCircle, NewX=((borderWidth/-2) + 1))
+        if Circle.getY(CCircle) < -1*borderHeight/2:
+            Circle.updatePos(CCircle, NewY=((borderHeight/-2) + 1))
+        if Circle.getY(CCircle) > 1*borderHeight/2:
+            Circle.updatePos(CCircle, NewY=((borderHeight/2) - 1))
     #Now we finally actually move the circles
     for PCircle in circlesList:
         Circle.updatePos(PCircle, NewX=Circle.getX(PCircle)+Circle.getXV(PCircle), NewY=Circle.getY(PCircle)+Circle.getYV(PCircle))
@@ -221,7 +231,9 @@ while running:
     #Locking the script at 60fps
     clock.tick(60)
 
-    screen.fill((40, 40, 45))  # Clear the screen with black
+    #Filling the screen with all the visual elements
+    screen.fill((40, 40, 45))  # Clear the screen with Dark Grey
+    pg.draw.rect(screen, (60, 60, 65), (getScreenCoordinates(borderWidth/-2, 0, cameraViewX, cameraViewY, zoomFactor)[0], getScreenCoordinates(0, borderHeight/-2, cameraViewX, cameraViewY, zoomFactor)[1], borderWidth*zoomFactor, borderHeight*zoomFactor))
     draw_grid(gridSize, zoomFactor, cameraViewX, cameraViewY, (0, 0, 0)) #Call the function above
     drawBorder(borderWidth, borderHeight)
     updateCircles()
@@ -259,4 +271,4 @@ while running:
         if event.type == pg.MOUSEBUTTONDOWN:
             if event.button == 1:
                 circleWorld = getWorldCoordinates(pg.mouse.get_pos()[0], pg.mouse.get_pos()[1], cameraViewX, cameraViewY, zoomFactor)
-                circlesList.append(Circle(circleWorld[0], circleWorld[1], (rand.randint(0,255), rand.randint(0,255), rand.randint(0,255)), rand.randint(5,20), rand.randint(-10, 10), rand.randint(-10, 10)))
+                circlesList.append(Circle(circleWorld[0], circleWorld[1], (rand.randint(0,255), rand.randint(0,255), rand.randint(0,255)), 15, rand.randint(-10, 10), rand.randint(-10, 10)))
