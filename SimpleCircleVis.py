@@ -157,10 +157,10 @@ def updateCircles():
         MainCircleY = Circle.getY(QCircle)
         MainCircleR = Circle.getRadius(QCircle)
         MainCircleMatrix = np.array([MainCircleX,MainCircleY])
-        MainCircleVelocityMatrix = np.array([Circle.getXV(QCircle), Circle.getYV(QCircle)])
         #BCircle is the circle we are testing the main circle against before updating the main circle
         for BCircle in circlesList:
             if circlesList.index(BCircle) > circlesList.index(QCircle):
+                MainCircleVelocityMatrix = np.array([Circle.getXV(QCircle), Circle.getYV(QCircle)])
                 SecondaryCircleX = Circle.getX(BCircle)
                 SecondaryCircleY = Circle.getY(BCircle)
                 SecondaryCircleR = Circle.getRadius(BCircle)
@@ -216,7 +216,6 @@ def CalcTotalVelo():
     TotalVelo = 0
     for I in circlesList:
         TotalVelo += Circle.getXV(I)**2 + Circle.getYV(I)**2
-    TotalVelo = np.sqrt(TotalVelo)
     return(str(TotalVelo))
 
 
