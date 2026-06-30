@@ -210,7 +210,6 @@ def updateCircles():
     for PCircle in circlesList:
         Circle.updatePos(PCircle, NewX=Circle.getX(PCircle)+Circle.getXV(PCircle), NewY=Circle.getY(PCircle)+Circle.getYV(PCircle))
     
-
 def CalcTotalVelo():
     global circlesList
     TotalVelo = 0
@@ -219,8 +218,6 @@ def CalcTotalVelo():
     return(str(TotalVelo))
 
 
-
-                    
 font = pg.font.SysFont("Arial", 36)
 #Running makes sure we didn't cancel
 #Unlocked is just a toggle to lock key inputs, currently unused, but could be useful for a pause menu
