@@ -4,6 +4,7 @@ import pygame as pg
 import numpy as np
 import random as sixseven
 
+#change
 pg.init()
 clock = pg.time.Clock()
 
