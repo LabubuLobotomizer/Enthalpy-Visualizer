@@ -2,40 +2,63 @@ import pygame as pg
 import numpy as np
 import random as rand
 
-pg.init()
 
-#Zoom base is the regular amount of pixels to be shown in the X direction, zoom factor is how zoomed out you are
-zoomBase = 1280
-zoomFactor = 1.0
-#A value to determine what looks good, space in between lines on the grid
-gridSize = 150
-#Setting the size of the screen
-screenWidth = 1280
-screenHeight = 720
-#Setting a border for the circles to bounce around in, centered on 0,0
-borderWidth = screenWidth
-borderHeight = screenHeight
-#Starting the view at (0,0)
-camera_X = -1*screenWidth/2
-camera_Y = -1*screenHeight/2
+def InitEngine(zFactor, gSize, sWidth, sHeight, CGirth):
+    #Setting global Variables
+    global zoomFactor
+    zoomFactor = zFactor
+    global gridSize
+    gridSize = gSize
+    global screenWidth
+    global screenHeight
+    screenWidth = sWidth
+    screenHeight = sHeight
+    global borderWidth
+    global borderHeight
+    borderWidth = screenWidth
+    borderHeight = screenHeight
+    global camera_X
+    global camera_Y
+    global cameraViewX
+    global cameraViewY
+    camera_X = -1*screenWidth/2
+    camera_Y = -1*screenHeight/2
+    cameraViewX = camera_X + (screenWidth / 2) / zoomFactor
+    cameraViewY = camera_Y + (screenHeight / 2) / zoomFactor
+    global circlesList
+    circlesList = []
+    global IDCounter
+    IDCounter = 0
+    global chunklist
+    global ChunkGirth
+    ChunkGirth = CGirth
+    chunklist = []
+    for i in range(borderWidth // ChunkGirth):
+        chunklist.append([])
+        for j in range(borderHeight // ChunkGirth):
+            chunklist[i].append([])
 
-circlesList = []
-cameraViewX = camera_X + (screenWidth / 2) / zoomFactor
-cameraViewY = camera_Y + (screenHeight / 2) / zoomFactor
 
-#Setting up the screen
-screen = pg.display.set_mode((screenWidth, screenHeight))
-pg.display.set_caption("Simple Circle Visualizer")
-clock = pg.time.Clock()
+    #Setting Pygame Screen
+    pg.init()
+    global screen
+    screen = pg.display.set_mode((screenWidth, screenHeight))
+    global clock
+    clock = pg.time.Clock()
+    pg.display.set_caption("Enthalpy Visualizer")
+
+
+
 
 class Circle():
-    def __init__(self, X_Pos, Y_Pos, Circle_Color, Radius, X_Velo, Y_Velo):
+    def __init__(self, X_Pos, Y_Pos, Circle_Color, Radius, X_Velo, Y_Velo, UID, chunkX=None, chunkY=None):
         self.xPosition = X_Pos
         self.yPosition = Y_Pos
         self.xVelocity = X_Velo
         self.yVelocity = Y_Velo
         self.radius = Radius
         self.color = Circle_Color
+        self.uid = UID
     def getX(self):
         return self.xPosition
     def getY(self):
@@ -48,6 +71,8 @@ class Circle():
         return self.radius
     def getColor(self):
         return self.color
+    def getUID(self):
+        return self.uid
     #This is assuming that the newX and newY are none by default unless explicitly changed, that way it is easy to update one at a time
     def updatePos(self, NewX=None, NewY=None):
         if NewX is not None:
@@ -59,9 +84,36 @@ class Circle():
             self.xVelocity = NewXV
         if NewYV is not None:
             self.yVelocity = NewYV
+    def updateChunk(self, NewChunkX=None, NewChunkY=None):
+        if NewChunkX is not None:
+            self.chunkX = NewChunkX
+        if NewChunkY is not None:
+            self.chunkY = NewChunkY
+    def findChunk(self):
+        global ChunkGirth, borderWidth, borderHeight
+        ChunkX = int((self.xPosition + (borderWidth/2)) // ChunkGirth)
+        ChunkY = int((self.yPosition + (borderHeight/2)) // ChunkGirth)
+        return ChunkX, ChunkY
     
+def SetChunks():
+    global chunklist, borderWidth, borderHeight, ChunkGirth
+    chunklist = []
+    for i in range((borderWidth // ChunkGirth)+1):
+        chunklist.append([])
+        for j in range((borderHeight // ChunkGirth)+1):
+            chunklist[i].append([])
+    for RCircle in circlesList:
+        ChunkX, ChunkY = Circle.findChunk(RCircle)
+        if 0 <= ChunkX < len(chunklist) and 0 <= ChunkY < len(chunklist[ChunkX]):
+            chunklist[ChunkX][ChunkY].append(RCircle)
+            Circle.updateChunk(RCircle, NewChunkX=ChunkX, NewChunkY=ChunkY)
+
 def drawBorder(BWidth, BHeight):
-    global cameraViewX, cameraViewY, zoomFactor
+    global cameraViewX, cameraViewY, zoomFactor, gridSize
+    #Draws a shaded box
+    pg.draw.rect(screen, (60, 60, 65), (getScreenCoordinates(BWidth/-2, 0, cameraViewX, cameraViewY, zoomFactor)[0], getScreenCoordinates(0, BHeight/-2, cameraViewX, cameraViewY, zoomFactor)[1], BWidth*zoomFactor, BHeight*zoomFactor))
+    #Draw Grid
+    draw_grid(gridSize, zoomFactor, cameraViewX, cameraViewY, (0, 0, 0)) #Call the function above
     #Drawing Bottom Line
     pg.draw.line(screen, (255,255,255), getScreenCoordinates(BWidth/2, BHeight/2, cameraViewX, cameraViewY, zoomFactor), getScreenCoordinates(-1*BWidth/2, BHeight/2, cameraViewX, cameraViewY, zoomFactor))
     #Drawing Top Line
@@ -70,7 +122,8 @@ def drawBorder(BWidth, BHeight):
     pg.draw.line(screen, (255,255,255), getScreenCoordinates(-1*BWidth/2, BHeight/2, cameraViewX, cameraViewY, zoomFactor), getScreenCoordinates(-1*BWidth/2, -1*BHeight/2, cameraViewX, cameraViewY, zoomFactor))
     #Drawing Right Line
     pg.draw.line(screen, (255,255,255), getScreenCoordinates(BWidth/2, BHeight/2, cameraViewX, cameraViewY, zoomFactor), getScreenCoordinates(BWidth/2, -1*BHeight/2, cameraViewX, cameraViewY, zoomFactor))
-
+    #Draw a 0,0 circle
+    pg.draw.circle(screen, (255,0,0), getScreenCoordinates(0, 0, cameraViewX, cameraViewY, zoomFactor), 2)
 def getScreenCoordinates(worldX, worldY, cameraX, cameraY, zoomFactor):
     #Calculating the screen coordinates based on the world coordinates, camera position, and zoom factor
     global screenWidth, screenHeight
@@ -147,9 +200,8 @@ def drawCircles(CameraX, CameraY, ZoomFactor):
 
 def updateCircles():
     #Defining things up here for optimization
-    XVectorFlat = np.array([1 , 0])
-    YVectorFlat = np.array([0 , 1])
     global circlesList
+    global chunklist
     #First we check collision, but the second circle must make sure that it is not doing circles that are before the main circle in the list as to not double update teh collision
     for QCircle in circlesList:
         #Preparing a bunch of variables because itll be faster to prepare them than to call the functions a bunch
@@ -158,33 +210,43 @@ def updateCircles():
         MainCircleR = Circle.getRadius(QCircle)
         MainCircleMatrix = np.array([MainCircleX,MainCircleY])
         #BCircle is the circle we are testing the main circle against before updating the main circle
-        for BCircle in circlesList:
+        ThisChunkX, ThisChunkY = Circle.findChunk(QCircle)
+        #List of Ids is the ones in the same chunk to test
+        ListofNearbyCircles = []
+        for x, chunks in enumerate(chunklist):
+            if x in range(ThisChunkX-1, ThisChunkX+2):
+                for y, subchunks in enumerate(chunks):
+                    if y in range(ThisChunkY-1, ThisChunkY+2):
+                        for Lcircle in subchunks:
+                            ListofNearbyCircles.append(Lcircle)
+        for BCircle in ListofNearbyCircles:
+            #The actual collision code
             if circlesList.index(BCircle) > circlesList.index(QCircle):
-                MainCircleVelocityMatrix = np.array([Circle.getXV(QCircle), Circle.getYV(QCircle)])
-                SecondaryCircleX = Circle.getX(BCircle)
-                SecondaryCircleY = Circle.getY(BCircle)
-                SecondaryCircleR = Circle.getRadius(BCircle)
-                #Checking the distance between the two to see if collision occurs
-                distanceBetweenCircles = np.sqrt(((MainCircleX-SecondaryCircleX)**2) + ((MainCircleY-SecondaryCircleY)**2))
-                if distanceBetweenCircles < MainCircleR+SecondaryCircleR:
-                    #Now we have to do that complicated ish math, For now everything is perfectly elastic
-                    SecondaryCircleMatrix = np.array([SecondaryCircleX,SecondaryCircleY])
-                    SecondaryCircleVelocityMatrix = np.array([Circle.getXV(BCircle), Circle.getYV(BCircle)])
-                    normalVector = (MainCircleMatrix - SecondaryCircleMatrix) #Getting difference between them
-                    normalVector = normalVector / np.linalg.norm(normalVector) #Converting it to normal vector
-                    #Some like math thing about rotating the interaction to be 90* hit not the actual angle of contact
-                    projection = np.dot(MainCircleVelocityMatrix - SecondaryCircleVelocityMatrix, normalVector)
-                    NewMainCircleVelocityMatrix = MainCircleVelocityMatrix - (projection * normalVector)
-                    NewSecondaryCircleVelocityMatrix = SecondaryCircleVelocityMatrix + (projection * normalVector)
+                    MainCircleVelocityMatrix = np.array([Circle.getXV(QCircle), Circle.getYV(QCircle)])
+                    SecondaryCircleX = Circle.getX(BCircle)
+                    SecondaryCircleY = Circle.getY(BCircle)
+                    SecondaryCircleR = Circle.getRadius(BCircle)
+                    #Checking the distance between the two to see if collision occurs
+                    distanceBetweenCircles = (((MainCircleX-SecondaryCircleX)**2) + ((MainCircleY-SecondaryCircleY)**2))
+                    if distanceBetweenCircles < (MainCircleR+SecondaryCircleR)**2:
+                        #Now we have to do that complicated ish math, For now everything is perfectly elastic
+                        SecondaryCircleMatrix = np.array([SecondaryCircleX,SecondaryCircleY])
+                        SecondaryCircleVelocityMatrix = np.array([Circle.getXV(BCircle), Circle.getYV(BCircle)])
+                        normalVector = (MainCircleMatrix - SecondaryCircleMatrix) #Getting difference between them
+                        normalVector = normalVector / np.linalg.norm(normalVector) #Converting it to normal vector
+                        #Some like math thing about rotating the interaction to be 90* hit not the actual angle of contact
+                        projection = np.dot(MainCircleVelocityMatrix - SecondaryCircleVelocityMatrix, normalVector)
+                        NewMainCircleVelocityMatrix = MainCircleVelocityMatrix - (projection * normalVector)
+                        NewSecondaryCircleVelocityMatrix = SecondaryCircleVelocityMatrix + (projection * normalVector)
 
-                    Circle.updateVelo(QCircle, NewXV=NewMainCircleVelocityMatrix[0], NewYV=NewMainCircleVelocityMatrix[1])
-                    Circle.updateVelo(BCircle, NewXV=NewSecondaryCircleVelocityMatrix[0], NewYV=NewSecondaryCircleVelocityMatrix[1])
-                    
-                    #Here we also have to separate overlapped circles
-                    overlap = MainCircleR+SecondaryCircleR - np.sqrt(((MainCircleX-SecondaryCircleX)**2) + ((MainCircleY-SecondaryCircleY)**2))
-                    MainCircleX += normalVector[0] * overlap
-                    MainCircleY += normalVector[1] * overlap
-                    Circle.updatePos(QCircle, NewX=MainCircleX, NewY=MainCircleY)
+                        Circle.updateVelo(QCircle, NewXV=NewMainCircleVelocityMatrix[0], NewYV=NewMainCircleVelocityMatrix[1])
+                        Circle.updateVelo(BCircle, NewXV=NewSecondaryCircleVelocityMatrix[0], NewYV=NewSecondaryCircleVelocityMatrix[1])
+                        
+                        #Here we also have to separate overlapped circles
+                        overlap = MainCircleR+SecondaryCircleR - np.sqrt(((MainCircleX-SecondaryCircleX)**2) + ((MainCircleY-SecondaryCircleY)**2))
+                        MainCircleX += normalVector[0] * overlap
+                        MainCircleY += normalVector[1] * overlap
+                        Circle.updatePos(QCircle, NewX=MainCircleX, NewY=MainCircleY)
     global borderWidth, borderHeight
     #Now we check if circles are colliding with edges of our border
     for CCircle in circlesList:
@@ -216,55 +278,3 @@ def CalcTotalVelo():
     for I in circlesList:
         TotalVelo += Circle.getXV(I)**2 + Circle.getYV(I)**2
     return(str(TotalVelo))
-
-
-font = pg.font.SysFont("Arial", 36)
-#Running makes sure we didn't cancel
-#Unlocked is just a toggle to lock key inputs, currently unused, but could be useful for a pause menu
-running = True
-unlocked = True
-while running:
-    #Locking the script at 60fps
-    clock.tick(60)
-
-    #Filling the screen with all the visual elements
-    screen.fill((40, 40, 45))  # Clear the screen with Dark Grey
-    pg.draw.rect(screen, (60, 60, 65), (getScreenCoordinates(borderWidth/-2, 0, cameraViewX, cameraViewY, zoomFactor)[0], getScreenCoordinates(0, borderHeight/-2, cameraViewX, cameraViewY, zoomFactor)[1], borderWidth*zoomFactor, borderHeight*zoomFactor))
-    draw_grid(gridSize, zoomFactor, cameraViewX, cameraViewY, (0, 0, 0)) #Call the function above
-    drawBorder(borderWidth, borderHeight)
-    updateCircles()
-    drawCircles(cameraViewX, cameraViewY, zoomFactor) #Draws all the circles
-    pg.draw.circle(screen, (255,0,0), getScreenCoordinates(0, 0, cameraViewX, cameraViewY, zoomFactor), 2)
-    TotalVelocityText = font.render("Total Velocity: " + CalcTotalVelo(), True, (255, 255, 255))
-    screen.blit(TotalVelocityText, (50,50))
-
-    pg.display.flip()  # Update the display
-
-    #Gets a list of all pressed keys and does the actions for each one as described
-    keys = pg.key.get_pressed()
-    if unlocked:
-        if keys[pg.K_UP]:
-            zoomFactor *= 1.03
-        if keys[pg.K_DOWN]:
-            zoomFactor /= 1.03
-        if keys[pg.K_w]:
-            cameraViewY -= 10 / zoomFactor
-        if keys[pg.K_s]:
-            cameraViewY += 10 / zoomFactor
-        if keys[pg.K_a]:
-            cameraViewX -= 10 / zoomFactor
-        if keys[pg.K_d]:
-            cameraViewX += 10 / zoomFactor
-
-    #gets only the keys that were first pressed between this frame and last, not the ones that were held down
-    #can also get other inputs like the X button being pressed
-    for event in pg.event.get():
-        if event.type == pg.QUIT:
-            running = False
-        if event.type == pg.KEYDOWN:
-            if event.key == pg.K_ESCAPE:
-                running = False
-        if event.type == pg.MOUSEBUTTONDOWN:
-            if event.button == 1:
-                circleWorld = getWorldCoordinates(pg.mouse.get_pos()[0], pg.mouse.get_pos()[1], cameraViewX, cameraViewY, zoomFactor)
-                circlesList.append(Circle(circleWorld[0], circleWorld[1], (rand.randint(0,255), rand.randint(0,255), rand.randint(0,255)), 15, rand.randint(-10, 10), rand.randint(-10, 10)))
