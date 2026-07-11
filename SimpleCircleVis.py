@@ -152,7 +152,7 @@ def updateCircles():
     global circlesList
     #First we check collision, but the second circle must make sure that it is not doing circles that are before the main circle in the list as to not double update teh collision
     for QCircle in circlesList:
-        #Preparing a bunch of variables because itll be faster to prepare them than to call the functions a bunch
+        #Preparing a bunch of variables because it'll be faster to prepare them than to call the functions a bunch
         MainCircleX = Circle.getX(QCircle)
         MainCircleY = Circle.getY(QCircle)
         MainCircleR = Circle.getRadius(QCircle)
