@@ -7,7 +7,9 @@ SCV.InitEngine(1.0, 150, 1280, 720, 100)
 font = pg.font.SysFont("Arial", 36)
 
 running = True
-unlocked = True
+Cameraunlocked = True
+Circlesunlocked = True
+CircleLockCD = 0
 while running:
     
     SCV.clock.tick(60)  # Limit the frame rate to 60 FPS
@@ -16,20 +18,25 @@ while running:
     SCV.screen.fill((40, 40, 45))  # Clear the screen with Dark Grey
     SCV.drawBorder(SCV.borderWidth, SCV.borderHeight)
     SCV.SetChunks()
-    SCV.updateCircles()
+    if Circlesunlocked:
+        SCV.updateCircles()
     SCV.drawCircles(SCV.cameraViewX, SCV.cameraViewY, SCV.zoomFactor) #Draws all the circles
+    MouseCircle = SCV.getCircleTouchingMouse(pg.mouse.get_pos()[0], pg.mouse.get_pos()[1], SCV.cameraViewX, SCV.cameraViewY, SCV.zoomFactor)
+    #if MouseCircle is not None:
+        #print(SCV.Circle.getUID(MouseCircle))
 
     #Text
     TotalVelocityText = font.render("Total Velocity: " + SCV.CalcTotalVelo(), True, (255, 255, 255))
     SCV.screen.blit(TotalVelocityText, (50,50))
 
-
+    if CircleLockCD > 0:
+        CircleLockCD -= 1
     SCV.pg.display.flip()
 
 
  #Gets a list of all pressed keys and does the actions for each one as described
     keys = pg.key.get_pressed()
-    if unlocked:
+    if Cameraunlocked:
         if keys[pg.K_UP]:
             SCV.zoomFactor *= 1.03
         if keys[pg.K_DOWN]:
@@ -42,6 +49,10 @@ while running:
             SCV.cameraViewX -= 10 / SCV.zoomFactor
         if keys[pg.K_d]:
             SCV.cameraViewX += 10 / SCV.zoomFactor
+        if keys[pg.K_SPACE]:
+            if CircleLockCD == 0:
+                Circlesunlocked = not Circlesunlocked
+                CircleLockCD = 30  # Set a cooldown period
 
     for event in pg.event.get():
         if event.type == pg.QUIT:
