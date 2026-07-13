@@ -277,6 +277,7 @@ def CalcTotalVelo():
     TotalVelo = 0
     for I in circlesList:
         TotalVelo += Circle.getXV(I)**2 + Circle.getYV(I)**2
+    TotalVelo = np.round(TotalVelo)
     return(str(TotalVelo))
 
 def getCircleTouchingMouse(mouseX, mouseY, cameraX, cameraY, zoomFactor):
@@ -284,5 +285,12 @@ def getCircleTouchingMouse(mouseX, mouseY, cameraX, cameraY, zoomFactor):
     for ACircle in circlesList:
         CircleScreenX, CircleScreenY = getScreenCoordinates(Circle.getX(ACircle), Circle.getY(ACircle), cameraX, cameraY, zoomFactor)
         if ((mouseX - CircleScreenX)**2 + (mouseY - CircleScreenY)**2) < (Circle.getRadius(ACircle)*zoomFactor)**2:
+            return ACircle
+    return None
+
+def getCircleByUID(UID):
+    global circlesList
+    for ACircle in circlesList:
+        if Circle.getUID(ACircle) == UID:
             return ACircle
     return None
