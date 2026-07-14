@@ -5,6 +5,7 @@ import numpy as np
 import random as sixseven
 
 #change
+# region
 pg.init()
 clock = pg.time.Clock()
 
@@ -14,7 +15,7 @@ HEIGHT=720
 screen=pg.display.set_mode((WIDTH, HEIGHT))
 static_grid=pg.Surface((WIDTH, HEIGHT))  #grid so no redraws needed for faster compute (no zoom)
 background=pg.Surface((WIDTH,HEIGHT))
-
+# endregion
 #region Grid
 #drawing grid 12 across width with squares
 def draw_grid(lines, Width):
@@ -49,10 +50,6 @@ class Wall:
     def draw_back(self):
         pg.draw.rect(background,'salmon',self.rect  )
     def collide(self,particle):
-
-
-
-
         if self.type=='vertical':
 
             Right_collision = (particle.radius + particle.newx >= self.left) and (
@@ -63,6 +60,9 @@ class Wall:
             if Right_collision or Left_collision:
                 if Y_bounds:
                     particle.xVelocity=-particle.xVelocity
+                    particle.newx = particle.xPosition + particle.xVelocity
+                    # print('collision', particle.xPosition, particle.xVelocity)
+                    return True
         else:
             Top_collision = (-particle.radius + particle.newy <=self.bottom) and (
                     -particle.radius + particle.yPosition >= self.bottom)
@@ -72,6 +72,106 @@ class Wall:
             if Top_collision or Bottom_collision:
                 if X_bounds:
                     particle.yVelocity=-particle.yVelocity
+                    particle.newy = particle.yPosition + particle.yVelocity
+                    # print('collision', particle.xPosition, particle.xVelocity)
+                    return True
+        return False
+
+def collide_test(particle, wall):
+    '''
+    True if collision occurs, else False
+    '''
+    if wall.type == 'vertical':
+
+        Right_collision = (particle.radius + particle.newx >= wall.left) and (
+                particle.radius + particle.xPosition <= wall.left)
+        Left_collision = (-particle.radius + particle.newx <= wall.right) and (
+                -particle.radius + particle.xPosition >= wall.right)
+        Y_bounds = (particle.yPosition >= wall.top) and (particle.yPosition <= wall.bottom)
+        if Right_collision or Left_collision:
+            if Y_bounds:
+                return True
+    else:
+        Top_collision = (-particle.radius + particle.newy <= wall.bottom) and (
+                -particle.radius + particle.yPosition >= wall.bottom)
+        Bottom_collision = (particle.radius + particle.newy >= wall.top) and (
+                particle.radius + particle.yPosition <= wall.top)
+        X_bounds = (particle.xPosition >= wall.left) and (particle.xPosition <= wall.right)
+        if Top_collision or Bottom_collision:
+            if X_bounds:
+                return True
+    return False
+
+def type_coll(wall):
+    '''
+    assumes collision occurs,
+    returns True if the collision is on a vert wall, False if not
+    '''
+    if wall.type=='vertical':
+        return True
+    else:
+        return False
+
+def LR_side_of_collision(wall, particle):
+    '''
+    Assumes collision is vertical
+    Returns True if collision was on right, False if left
+    '''
+    Right_collision = (particle.radius + particle.newx >= wall.left) and (
+            particle.radius + particle.xPosition <= wall.left)
+    if Right_collision:
+        return True
+    else:
+        return False
+
+def TB_side_of_collision(wall, particle):
+    '''
+        Assumes collision is horizontal
+        Returns True if collision was on bottom, False if top
+        '''
+    Bottom_collision = (particle.radius + particle.newy >= wall.top) and (
+            particle.radius + particle.yPosition <= wall.top)
+    if Bottom_collision:
+        return True
+    else:
+        return False
+
+def ref_col(walls, particle):
+    '''alters new x and y values to account for distance between particle and wall
+    recursively calculates until no distance is left, should work to arbitrarily high numbers
+    '''
+
+    for wall in walls:
+        if collide_test(particle,wall):
+            if type_coll==True:    #True means vert wall collision
+                if LR_side_of_collision(wall, particle):  #True means right
+                    ref_x= -abs(wall.left-particle.newx)+wall.left  #projecting
+                    particle.xVelocity=-particle.xVelocity
+
+                else:
+                    ref_x = abs(wall.right - particle.newx) + wall.right
+                    particle.xVelocity = -particle.xVelocity
+                particle.newx = ref_x
+            else:
+                if TB_side_of_collision(wall, particle):    #True=bottom
+                    ref_y = -abs(wall.top - particle.newy) + wall.top  # projecting
+                    particle.yVelocity = -particle.yVelocity
+                else:
+                    ref_y = abs(wall.bottom - particle.newy) + wall.bottom  # projecting
+                    particle.yVelocity = -particle.yVelocity
+                particle.newy = ref_y
+
+            ref_col(walls,particle)
+
+
+def col(walls, particles):
+    ''' updates once after collisions whether they occurred or not'''
+    for particle in particles:
+        ref_col(walls, particle)
+        particle.xPosition = particle.newx
+        particle.yPosition = particle.newy
+        particle.newx = particle.xPosition + particle.xVelocity
+        particle.newy = particle.yPosition + particle.yVelocity
 
 
 
@@ -110,24 +210,38 @@ class Particle():
         NewSecondaryCircleVelocityMatrix = SecondaryCircleVelocityMatrix + velocity_transferred
         self.xVelocity, self.yVelocity = NewMainCircleVelocityMatrix
         other.xVelocity, other.yVelocity = NewSecondaryCircleVelocityMatrix
+    def display(self):
+        print(self.xPosition, self.yPosition, self.xVelocity, self.yVelocity)
 def particle_collisions_full(Particles, Walls):
     '''
     particles are a list of all particles and walls are well a list of all walls. This is assumed(supposed to put assumptions and things the function does in docstring but lwk don't need allat for now.
     '''
-    indice=1
+    indie=1
     total_num_particles=len(Particles)
     for circle in Particles:
-        for second_circle in Particles[indice:total_num_particles]:
+        for second_circle in Particles[indie:total_num_particles]:
 
             dist_squared=(circle.xPosition-second_circle.xPosition)**2+(circle.yPosition-second_circle.yPosition)**2
             if dist_squared < (circle.radius+second_circle.radius)**2:     #notice, this avoids sqrt, which is computationally expensive MIT OCW LOLOLOL
                 circle.collide(second_circle)
-        indice+=1
+        indie+=1
+
     for p in Particles:
-        for wall in Walls:
-            wall.collide(p)
 
 
+        recursive_wall_collider(p,walls)
+
+def recursive_wall_collider(p,temp_walls):
+    ''' takes in one particle and list of walls, calculates all collisions with walls for that particle'''
+
+
+    for wall in temp_walls:
+        wall_collision = wall.collide(p)
+
+        if wall_collision==True:
+
+            recursive_wall_collider(p,temp_walls)
+            break
 
 def grid_collision_checker(Particles, parameterx, parametery, width, height):  #something like a sweep or a grid checker would make collisions less expensive to compute, we will do together.
      pass
@@ -148,9 +262,9 @@ walls = [
     right_wall,
     left_wall,
     bottom_wall,
-    system_right,
-    system_left,
-    system_bottom
+    # system_right,
+    # system_left,
+    # system_bottom
 ]
 
 
@@ -163,14 +277,14 @@ particles=[]
 
 
 
-#end_region
+#endregion
 
 pg.display.flip()
 running=True
 while running:
-    clock.tick(60)
+    clock.tick(5)
     screen.blit(background, (0,0))
-
+# region
     for event in pg.event.get():
         if event.type == pg.QUIT:
             running = False
@@ -180,11 +294,15 @@ while running:
         if event.type == pg.MOUSEBUTTONDOWN:
             if event.button == 1:
                 p=pg.mouse.get_pos()
-                particles.append(Particle(p[0], p[1], 'White', sixseven.randint(5,10), sixseven.randint(-5,5), sixseven.randint(-5,5)))
-    particle_collisions_full(particles, walls)
+                # particles.append(Particle(p[0], p[1], 'White', sixseven.randint(5,10), sixseven.randint(-5,1000), sixseven.randint(-5,5)))
+                particles.append(Particle(p[0], p[1], 'White', 20, 10,0))
+# endregion
+#     particle_collisions_full(particles, walls)
+    col(walls, particles)
     for thing in particles:
         thing.draw()
-        thing.updatePos()
+        # thing.display()
+
 
     pg.display.flip()
 
