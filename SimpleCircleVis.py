@@ -2,7 +2,6 @@ import pygame as pg
 import numpy as np
 import random as rand
 
-
 def InitEngine(zFactor, gSize, sWidth, sHeight, CGirth):
     #Setting global Variables
     global zoomFactor
@@ -46,9 +45,6 @@ def InitEngine(zFactor, gSize, sWidth, sHeight, CGirth):
     global clock
     clock = pg.time.Clock()
     pg.display.set_caption("Enthalpy Visualizer")
-
-
-
 
 class Circle():
     def __init__(self, X_Pos, Y_Pos, Circle_Color, Radius, X_Velo, Y_Velo, UID, chunkX=None, chunkY=None):
@@ -124,6 +120,7 @@ def drawBorder(BWidth, BHeight):
     pg.draw.line(screen, (255,255,255), getScreenCoordinates(BWidth/2, BHeight/2, cameraViewX, cameraViewY, zoomFactor), getScreenCoordinates(BWidth/2, -1*BHeight/2, cameraViewX, cameraViewY, zoomFactor))
     #Draw a 0,0 circle
     pg.draw.circle(screen, (255,0,0), getScreenCoordinates(0, 0, cameraViewX, cameraViewY, zoomFactor), 2)
+
 def getScreenCoordinates(worldX, worldY, cameraX, cameraY, zoomFactor):
     #Calculating the screen coordinates based on the world coordinates, camera position, and zoom factor
     global screenWidth, screenHeight
@@ -233,7 +230,10 @@ def updateCircles():
                         SecondaryCircleMatrix = np.array([SecondaryCircleX,SecondaryCircleY])
                         SecondaryCircleVelocityMatrix = np.array([Circle.getXV(BCircle), Circle.getYV(BCircle)])
                         normalVector = (MainCircleMatrix - SecondaryCircleMatrix) #Getting difference between them
-                        normalVector = normalVector / np.linalg.norm(normalVector) #Converting it to normal vector
+                        if np.linalg.norm(normalVector) == 0:
+                            normalVector = np.array([1, 0])
+                        else:
+                            normalVector = normalVector / np.linalg.norm(normalVector) #Converting it to normal vector
                         #Some like math thing about rotating the interaction to be 90* hit not the actual angle of contact
                         projection = np.dot(MainCircleVelocityMatrix - SecondaryCircleVelocityMatrix, normalVector)
                         NewMainCircleVelocityMatrix = MainCircleVelocityMatrix - (projection * normalVector)
@@ -277,4 +277,20 @@ def CalcTotalVelo():
     TotalVelo = 0
     for I in circlesList:
         TotalVelo += Circle.getXV(I)**2 + Circle.getYV(I)**2
+    TotalVelo = np.round(TotalVelo)
     return(str(TotalVelo))
+
+def getCircleTouchingMouse(mouseX, mouseY, cameraX, cameraY, zoomFactor):
+    global circlesList
+    for ACircle in circlesList:
+        CircleScreenX, CircleScreenY = getScreenCoordinates(Circle.getX(ACircle), Circle.getY(ACircle), cameraX, cameraY, zoomFactor)
+        if ((mouseX - CircleScreenX)**2 + (mouseY - CircleScreenY)**2) < (Circle.getRadius(ACircle)*zoomFactor)**2:
+            return ACircle
+    return None
+
+def getCircleByUID(UID):
+    global circlesList
+    for ACircle in circlesList:
+        if Circle.getUID(ACircle) == UID:
+            return ACircle
+    return None
