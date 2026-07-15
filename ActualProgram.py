@@ -89,7 +89,7 @@ while running:
                     randXVelo = rand.randint(-10, 10)
                 while randYVelo == 0:
                     randYVelo = rand.randint(-10, 10)
-                SCV.circlesList.append(SCV.Circle(circleWorld[0], circleWorld[1], (rand.randint(0,255), rand.randint(0,255), rand.randint(0,255)), rand.randint(5, 35), randXVelo, randYVelo, SCV.IDCounter))
+                SCV.circlesList.append(SCV.Circle(circleWorld[0], circleWorld[1], (rand.randint(0,255), rand.randint(0,255), rand.randint(0,255)), rand.randint(15, 35), randXVelo, randYVelo, SCV.IDCounter))
                 SCV.IDCounter += 1
             #Right Clicking to select a circle
             if event.button == 3:
