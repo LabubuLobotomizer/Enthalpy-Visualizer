@@ -1,7 +1,85 @@
 import SimpleCircleVis as SCV
 import pygame as pg
 import random as rand
+import Buggy as bugged
 
+
+class Universe():
+    def __init__(self):
+        self.particles=[]
+        self.walls=[]
+    #To add any object: world.particles.append(Class())
+    def wall_particle_collisions(self, particles, walls):
+        '''Assumes walls are not type='slant'
+        reverses direction if next timestep crosses wall
+        '''
+        for wall in walls:
+            for particle in particles:
+
+                if wall.type == 'vertical':
+                    particle.NewX=particle.xPosition+particle.xVelocity
+                    particle.NewY=particle.yPosition+particle.yVelocity
+                    Right_collision = (particle.radius + particle.NewX >= wall.left) and (
+                            particle.radius + particle.xPosition <= wall.left)
+                    Left_collision = (-particle.radius + particle.NewX <= wall.right) and (
+                            -particle.radius + particle.xPosition >= wall.right)
+                    Y_bounds = (particle.yPosition >= wall.top) and (particle.yPosition <= wall.bottom)
+
+                    if (Right_collision or Left_collision) and Y_bounds:
+
+                        particle.xVelocity = -particle.xVelocity
+                        particle.NewX = particle.xPosition + particle.xVelocity
+                        # return True
+                        print('collision', particle.xPosition, particle.xVelocity)
+                else:
+                    Top_collision = (-particle.radius + particle.NewY <= wall.bottom) and (
+                            -particle.radius + particle.yPosition >= wall.bottom)
+                    Bottom_collision = (particle.radius + particle.NewY >= wall.top) and (
+                            particle.radius + particle.yPosition <= wall.top)
+                    X_bounds = (particle.xPosition >= wall.left) and (particle.xPosition <= wall.right)
+                    if (Top_collision or Bottom_collision) and X_bounds:
+
+                        particle.yVelocity = -particle.yVelocity
+                        particle.NewY = particle.yPosition + particle.yVelocity
+                        print('collision', particle.xPosition, particle.xVelocity)
+                #         return True
+                # return False
+
+
+class LatticeWall:
+    def __init__(self,first_cord_x1_y1,second_cord_x2_y2,width,permeability,color):
+        self.first_lattice=first_cord_x1_y1
+        self.second_lattice=second_cord_x2_y2
+        self.width=width
+        self.permeability=permeability
+        self.color=color
+        if (self.first_lattice[0]-self.second_lattice[0])==0:
+            self.type='vertical'
+            self.slope='inf'
+        else:
+            self.slope= (self.first_lattice[1]-self.second_lattice[1])/(self.first_lattice[0]-self.second_lattice[0])
+            if self.slope==0:
+                self.type='horizontal'
+            else:
+                self.type='slant'
+        if self.second_lattice[1]<=self.first_lattice[1]:
+            self.top = self.second_lattice[1]
+            self.bottom = self.first_lattice[1]
+        else:
+            self.bottom = self.second_lattice[1]
+            self.top = self.first_lattice[1]
+        self.right=self.first_lattice[0]+self.width/2
+        self.left = self.first_lattice[0] - self.width / 2
+
+    def draw(self,surface):
+        pg.draw.line(surface,self.color,self.first_lattice,self.second_lattice,self.width)
+
+
+world = Universe()
+world.walls.append(LatticeWall((50,80),(90,20),10,0,'green'))
+world.walls.append(LatticeWall((600,400),(600,0),10,0,'green'))
+
+#region startup/init
 SCV.InitEngine(1.0, 150, 1280, 720, 100)
 
 font = pg.font.SysFont("Arial", 36)
@@ -13,46 +91,13 @@ CircleLockCD = 0
 GuiVisible = True
 GUIToggleCD = 0
 selectedCircle = None
-while running:
-    
-    SCV.clock.tick(60)  # Limit the frame rate to 60 FPS
+# endregion
 
 
-    SCV.screen.fill((40, 40, 45))  # Clear the screen with Dark Grey
-    SCV.drawBorder(SCV.borderWidth, SCV.borderHeight)
-    SCV.SetChunks()
-    if Circlesunlocked:
-        SCV.updateCircles()
-    SCV.drawCircles(SCV.cameraViewX, SCV.cameraViewY, SCV.zoomFactor) #Draws all the circles
 
-    if selectedCircle is not None:
-        # Draw a highlight around the selected circle
-        CircleScreenX, CircleScreenY = SCV.getScreenCoordinates(SCV.Circle.getX(selectedCircle), SCV.Circle.getY(selectedCircle), SCV.cameraViewX, SCV.cameraViewY, SCV.zoomFactor)
-        pg.draw.circle(SCV.screen, (255, 0, 0), (int(CircleScreenX), int(CircleScreenY)), int(SCV.Circle.getRadius(selectedCircle) * SCV.zoomFactor) + 5, 3)
-    
-    
-    #Draws the GUI if GuiVisible is True
-    if GuiVisible:
-        if selectedCircle is not None:
-            Cameraunlocked = False
-            SCV.cameraViewX = SCV.Circle.getX(selectedCircle)
-            SCV.cameraViewY = SCV.Circle.getY(selectedCircle)
-            pg.draw.rect(SCV.screen, SCV.Circle.getColor(selectedCircle), (10, 10, SCV.screenWidth//4, SCV.screenHeight//2))  # Draw a dark grey rectangle for the GUI background
-        else:
-            Cameraunlocked = True
-
-    #Text
-    TotalVelocityText = font.render("Total Velocity: " + SCV.CalcTotalVelo(), True, (255, 255, 255))
-    SCV.screen.blit(TotalVelocityText, (50,50))
-
-    if CircleLockCD > 0:
-        CircleLockCD -= 1
-    if GUIToggleCD > 0:
-        GUIToggleCD -= 1
-    SCV.pg.display.flip()
-
-
- #Gets a list of all pressed keys and does the actions for each one as described
+def camera_mov_and_circle_lock():
+    global CircleLockCD
+    global Circlesunlocked
     keys = pg.key.get_pressed()
     if keys[pg.K_UP]:
         SCV.zoomFactor *= 1.03
@@ -70,14 +115,16 @@ while running:
     if keys[pg.K_SPACE]:
         if CircleLockCD == 0:
             Circlesunlocked = not Circlesunlocked
-            CircleLockCD = 30  # Set a cooldown period
+            CircleLockCD = 30  #
 
+def os_events():
+    global selectedCircle
     for event in pg.event.get():
         if event.type == pg.QUIT:
-            running = False
+            return False
         if event.type == pg.KEYDOWN:
             if event.key == pg.K_ESCAPE:
-                running = False
+                return False
         #Mouse Input
         if event.type == pg.MOUSEBUTTONDOWN:
             #Left Clicking to create a circle
@@ -110,4 +157,57 @@ while running:
                 SCV.zoomFactor *= 1.1
             elif event.y < 0:
                 SCV.zoomFactor /= 1.1
-                
+    return True
+
+def pg_frames_and_screenfill():
+    SCV.clock.tick(60)  # Limit the frame rate to 60 FPS
+
+    SCV.screen.fill((40, 40, 45))  # Clear the screen with Dark Grey
+    SCV.drawBorder(SCV.borderWidth, SCV.borderHeight)
+    SCV.SetChunks()
+
+def circle_lock():
+
+    if Circlesunlocked:
+        SCV.updateCircles()
+    SCV.drawCircles(SCV.cameraViewX, SCV.cameraViewY, SCV.zoomFactor) #Draws all the circles
+
+    if selectedCircle is not None:
+        # Draw a highlight around the selected circle
+        CircleScreenX, CircleScreenY = SCV.getScreenCoordinates(SCV.Circle.getX(selectedCircle), SCV.Circle.getY(selectedCircle), SCV.cameraViewX, SCV.cameraViewY, SCV.zoomFactor)
+        pg.draw.circle(SCV.screen, (255, 0, 0), (int(CircleScreenX), int(CircleScreenY)), int(SCV.Circle.getRadius(selectedCircle) * SCV.zoomFactor) + 5, 3)
+
+while running:
+    pg_frames_and_screenfill()
+
+    for lall in world.walls:
+        lall.draw(SCV.screen)
+
+    circle_lock()
+    
+    #Draws the GUI if GuiVisible is True
+    if GuiVisible:
+        if selectedCircle is not None:
+            Cameraunlocked = False
+            SCV.cameraViewX = SCV.Circle.getX(selectedCircle)
+            SCV.cameraViewY = SCV.Circle.getY(selectedCircle)
+            pg.draw.rect(SCV.screen, SCV.Circle.getColor(selectedCircle), (10, 10, SCV.screenWidth//4, SCV.screenHeight//2))  # Draw a dark grey rectangle for the GUI background
+        else:
+            Cameraunlocked = True
+    world.wall_particle_collisions(SCV.circlesList,world.walls)
+    #region idk
+    TotalVelocityText = font.render("Total Velocity: " + SCV.CalcTotalVelo(), True, (255, 255, 255))
+    SCV.screen.blit(TotalVelocityText, (50,50))
+
+    if CircleLockCD > 0:
+        CircleLockCD -= 1
+    if GUIToggleCD > 0:
+        GUIToggleCD -= 1
+    SCV.pg.display.flip()
+    #endregion
+
+ #Gets a list of all pressed keys and does the actions for each one as described
+    camera_mov_and_circle_lock()
+
+
+    running = os_events()
