@@ -2,22 +2,22 @@ import SimpleCircleVis as SCV
 
 def enthalpy(particles, vertices):
     '''
-    region is a polygon where enthalpy is stored and the change over a timestep is output.
+    region is a polygon where total V is stored, checks to see if particles are in polygon.
     vertices, list, are in order of lines ex, [v1,v2,v3,v4] would be a rectangle.
     '''
     inside_particles=[]
     outside_particles=[]
 
     for point in particles:
-        if inside(SCV.point.xPosistion, vertices):
+        if inside((SCV.Circle.getX(point), SCV.Circle.getY(point)), vertices):
             inside_particles.append(point)
         else:
             outside_particles.append(point)
 
     total_inside_velo=0
     for p in inside_particles:
-        total_inside_velo+= SCV.p.xVelocity + SCV.p.yVelocity
-    print(total_inside_velo)
+        total_inside_velo+= abs(SCV.Circle.getXV(p)) + abs(SCV.Circle.getYV(p))
+    return total_inside_velo
 
 
 
