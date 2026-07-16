@@ -250,24 +250,36 @@ def updateCircles():
     global borderWidth, borderHeight
     #Now we check if circles are colliding with edges of our border
     for CCircle in circlesList:
-        if Circle.getX(CCircle) > borderWidth/2:
+        if Circle.getX(CCircle) + Circle.getRadius(CCircle) > borderWidth/2:
             Circle.updateVelo(CCircle, NewXV=Circle.getXV(CCircle)*-1)
-        if Circle.getX(CCircle) < -1*borderWidth/2:
+        if Circle.getX(CCircle) - Circle.getRadius(CCircle) < -1*borderWidth/2:
             Circle.updateVelo(CCircle, NewXV=Circle.getXV(CCircle)*-1)
-        if Circle.getY(CCircle) < -1*borderHeight/2:
+        if Circle.getY(CCircle) - Circle.getRadius(CCircle) < -1*borderHeight/2:
             Circle.updateVelo(CCircle, NewYV=Circle.getYV(CCircle)*-1)
-        if Circle.getY(CCircle) > 1*borderHeight/2:
+        if Circle.getY(CCircle) + Circle.getRadius(CCircle) > 1*borderHeight/2:
             Circle.updateVelo(CCircle, NewYV=Circle.getYV(CCircle)*-1)
     #Now we gotta correct ones still outside of the border due to errors
     for CCircle in circlesList:
-        if Circle.getX(CCircle) > borderWidth/2:
-            Circle.updatePos(CCircle, NewX=((borderWidth/2) - 1))
-        if Circle.getX(CCircle) < -1*borderWidth/2:
-            Circle.updatePos(CCircle, NewX=((borderWidth/-2) + 1))
-        if Circle.getY(CCircle) < -1*borderHeight/2:
-            Circle.updatePos(CCircle, NewY=((borderHeight/-2) + 1))
-        if Circle.getY(CCircle) > 1*borderHeight/2:
-            Circle.updatePos(CCircle, NewY=((borderHeight/2) - 1))
+        if Circle.getX(CCircle) + Circle.getRadius(CCircle) > borderWidth/2:
+            if Circle.getX(CCircle) + Circle.getRadius(CCircle) > borderWidth:
+                Circle.updatePos(CCircle, NewX=((borderWidth/2) - Circle.getRadius(CCircle)))
+            else:
+                Circle.updatePos(CCircle, NewX=(((borderWidth/2) - Circle.getRadius(CCircle)) - (Circle.getX(CCircle) + Circle.getRadius(CCircle) - borderWidth/2)))
+        if Circle.getX(CCircle) - Circle.getRadius(CCircle) < -1*borderWidth/2:
+            if Circle.getX(CCircle) - Circle.getRadius(CCircle) < -1*borderWidth:
+                Circle.updatePos(CCircle, NewX=((borderWidth/-2) + Circle.getRadius(CCircle)))
+            else:
+                Circle.updatePos(CCircle, NewX=(((borderWidth/-2) + Circle.getRadius(CCircle)) - (Circle.getX(CCircle) - Circle.getRadius(CCircle) + borderWidth/2)))
+        if Circle.getY(CCircle) - Circle.getRadius(CCircle) < -1*borderHeight/2:
+            if Circle.getY(CCircle) - Circle.getRadius(CCircle) < -1*borderHeight:
+                Circle.updatePos(CCircle, NewY=((borderHeight/-2) + Circle.getRadius(CCircle)))
+            else:
+                Circle.updatePos(CCircle, NewY=(((borderHeight/-2) + Circle.getRadius(CCircle)) - (Circle.getY(CCircle) - Circle.getRadius(CCircle) + borderHeight/2)))
+        if Circle.getY(CCircle) + Circle.getRadius(CCircle) > 1*borderHeight/2:
+            if Circle.getY(CCircle) + Circle.getRadius(CCircle) > borderHeight:
+                Circle.updatePos(CCircle, NewY=((borderHeight/2) - Circle.getRadius(CCircle)))
+            else:
+                Circle.updatePos(CCircle, NewY=(((borderHeight/2) - Circle.getRadius(CCircle)) - (Circle.getY(CCircle) + Circle.getRadius(CCircle) - borderHeight/2)))
     #Now we finally actually move the circles
     for PCircle in circlesList:
         Circle.updatePos(PCircle, NewX=Circle.getX(PCircle)+Circle.getXV(PCircle), NewY=Circle.getY(PCircle)+Circle.getYV(PCircle))
