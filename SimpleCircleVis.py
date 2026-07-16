@@ -27,6 +27,8 @@ def InitEngine(zFactor, gSize, sWidth, sHeight, CGirth):
     cameraViewY = camera_Y + (screenHeight / 2) / zoomFactor
     global circlesList
     circlesList = []
+    global wallsList
+    wallsList = []
     global IDCounter
     IDCounter = 0
     global chunklist
@@ -93,6 +95,54 @@ class Circle():
         ChunkX = int((self.xPosition + (borderWidth/2)) // ChunkGirth)
         ChunkY = int((self.yPosition + (borderHeight/2)) // ChunkGirth)
         return ChunkX, ChunkY
+    
+class Wall():
+    def __init__(self, StartX, StartY, EndX, EndY, Width, Color: tuple = (int, int, int), Permeability=1):
+        self.StartingX = StartX
+        self.StartingY= StartY
+        self.EndingX = EndX
+        self.EndingY = EndY
+        #Total Width of wall all the way through btw
+        self.WallWidth = Width
+        self.WallColor = Color
+        self.WallPermeability = Permeability
+        #Defined a bunch of math stuff here so we don't have to calculate it every time we call iterate later
+        self.WallStartPos = np.array([self.StartingX, self.StartingY])
+        self.WallEndPos = np.array([self.EndingX, self.EndingY])
+        self.WallRelativePos = self.WallEndPos - self.WallStartPos
+        self.WallLength = np.linalg.norm(self.WallRelativePos)
+        self.WallDirection = self.WallRelativePos / self.WallLength
+        self.WallNormal = np.array([-self.WallDirection[0], self.WallDirection[1]])
+    def getStartX(self):
+        return(self.StartingX)
+    def getStartY(self):
+        return(self.StartingY)
+    def getEndX(self):
+        return(self.EndingX)
+    def getEndY(self):
+        return(self.EndingY)
+    def getWidth(self):
+        return(self.WallWidth)
+    def getColor(self):
+        return(self.WallColor)
+    def getPermeability(self):
+        return(self.WallPermeability)
+    def getStartPosTuple(self):
+        return((self.StartingX, self.StartingY))
+    def getEndPosTuple(self):
+        return((self.EndingX, self.EndingY))
+    def getStartMatrix(self):
+        return(self.WallStartPos)
+    def getEndMatrix(self):
+        return(self.WallEndPos)
+    def getWallRelativePos(self):
+        return(self.WallRelativePos)
+    def getWallLength(self):
+        return(self.WallLength)
+    def getWallDirection(self):
+        return(self.WallDirection)
+    def getWallNormal(self):
+        return(self.WallNormal)
     
 def SetChunks():
     #This checks the x,y coordinates of each circle and assigns them to a chunk
@@ -199,6 +249,12 @@ def drawCircles(CameraX, CameraY, ZoomFactor):
         #print(getScreenCoordinates(Circle.getX(CurrentCircle), Circle.getY(CurrentCircle), CameraX, CameraY, ZoomFactor))
         pg.draw.circle(screen, Circle.getColor(CurrentCircle), (getScreenCoordinates(Circle.getX(CurrentCircle), Circle.getY(CurrentCircle), CameraX, CameraY, ZoomFactor)), Circle.getRadius(CurrentCircle)*zoomFactor)
 
+def drawWalls(CameraX, CameraY, ZoomFactor):
+    #Draws all of the walls
+    global wallsList, screenWidth, screenHeight
+    for CurrentWall in wallsList:
+        pg.draw.line(screen, Wall.getColor(CurrentWall), (getScreenCoordinates(Wall.getStartX(CurrentWall), Wall.getStartY(CurrentWall), CameraX, CameraY, ZoomFactor)), (getScreenCoordinates(Wall.getEndX(CurrentWall), Wall.getEndY(CurrentWall), CameraX, CameraY, ZoomFactor)), width= max(1, int(Wall.getWidth(CurrentWall) * zoomFactor)))
+
 def runCirclesOnCirclesCollision():
     #So this is the bulk of the engine, and the name is self explanatory
     global circlesList
@@ -275,7 +331,8 @@ def runCirclesOnCirclesCollision():
                         #Updates the circles with the new velocity matrixes we just made them
                         Circle.updateVelo(QCircle, NewXV=NewMainCircleVelocityMatrix[0], NewYV=NewMainCircleVelocityMatrix[1])
                         Circle.updateVelo(BCircle, NewXV=NewSecondaryCircleVelocityMatrix[0], NewYV=NewSecondaryCircleVelocityMatrix[1])
-                        
+                        MainCircleVelocityMatrix = NewMainCircleVelocityMatrix #So that it is proper for the next collision
+
                         #Here we also have to separate overlapped circles
                         #First we figure out how much they overlap by, then we push the main circle away
                         #The proper way to do this is to push both away ~50% of the distance, but I was too lazy
@@ -284,6 +341,49 @@ def runCirclesOnCirclesCollision():
                         MainCircleY += normalVector[1] * overlap
                         #Updates the circles with the new positions
                         Circle.updatePos(QCircle, NewX=MainCircleX, NewY=MainCircleY)
+                        MainCircleMatrix = np.array([MainCircleX, MainCircleY])
+
+def runCirlcesOnWallCollision():
+    global circlesList
+    #We iterate through each circle to see if it is colliding with any wall
+    for WCircle in circlesList:
+        #Defining Variable here
+        WCirclePositionMatrix = np.array([Circle.getX(WCircle), Circle.getY(WCircle)])
+        for AWall in wallsList:
+            #We are gonna basically rotate the circle's center so its on a plane where the wall's rectangular body is align with the axis
+            #At first I thought this was gonna be too taxxing to do
+            #But if we just do all this math when we initialize the wall we don't need to do it again!!!
+            wallRelativePosition = Wall.getWallRelativePos(AWall)
+            wallStartPos = Wall.getStartMatrix(AWall)
+            #Here we have to start doing math for every wall but still nothing heavy
+            relativeCircleCoord = WCirclePositionMatrix - wallStartPos
+            distanceAlongWall = np.dot(relativeCircleCoord, wallRelativePosition)
+            distanceAlongWall = distanceAlongWall / np.dot(wallRelativePosition, wallRelativePosition)
+            distanceAlongWall = np.clip(distanceAlongWall, 0.0, 1.0)
+            closestPointToCircle = wallStartPos + (distanceAlongWall * wallRelativePosition)
+            shortestDistanceToWall = np.linalg.norm(WCirclePositionMatrix - closestPointToCircle)
+            #Now we check if the distance is less than the radius plus half the width of the wall
+            if shortestDistanceToWall < ((Wall.getWidth(AWall)/2) + Circle.getRadius(WCircle)):
+                #Now we just reflect the balls
+                #First we gotta set more variables, including a special case where the circle is on the line and causes a divide by 0
+                if shortestDistanceToWall == 0:
+                    normal = Wall.getWallNormal(AWall)
+                else:
+                    #this happens the majority of the time
+                    #The normal is the normal vector of the wall towards the circle
+                    normal = (WCirclePositionMatrix - closestPointToCircle) / shortestDistanceToWall
+                #The penetration is how deep the circle goes into the wall
+                penetration = (Wall.getWidth(AWall)/2 +Circle.getRadius(WCircle)) - shortestDistanceToWall
+
+                #Now we push the circle out of the wall by the penetration amount
+                WCirclePositionMatrix += normal * penetration
+                Circle.updatePos(WCircle, NewX= WCirclePositionMatrix[0], NewY = WCirclePositionMatrix[1])
+
+                #Now we reflect Velocity
+                WCircleVelocityMatrix = np.array([Circle.getXV(WCircle), Circle.getYV(WCircle)])
+                WCircleVelocityMatrix = WCircleVelocityMatrix - 2 * np.dot(WCircleVelocityMatrix, normal) * normal
+                if np.dot(WCircleVelocityMatrix, normal) > 0:
+                    Circle.updateVelo(WCircle, NewXV=WCircleVelocityMatrix[0], NewYV=WCircleVelocityMatrix[1])
 
 def runCirclesOnBorderCollision():
     #This first step is reflecting the velocity if the edge of the circle is outside of the border
@@ -333,6 +433,8 @@ def updateCircles():
     #Teleports circle back into the border if it is outside of it
     #Accurately handles mid frame collisions
     runCirclesOnBorderCollision()
+    #Now we collide the circles with the wall class i just made
+    runCirlcesOnWallCollision()
     #Now we finally actually move the circles
     #This is self explanatory
     for PCircle in circlesList:
