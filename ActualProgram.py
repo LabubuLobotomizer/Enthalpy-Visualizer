@@ -1,12 +1,13 @@
 import SimpleCircleVis as SCV
 import pygame as pg
 import random as rand
+import Enthalpy_Zones as ENTH
 
 #region startup/init
 SCV.InitEngine(1.0, 150, 1280, 720, 100)
 
 font = pg.font.SysFont("Arial", 36)
-
+stored_dh=0
 running = True
 Cameraunlocked = True
 Circlesunlocked = True
@@ -131,7 +132,7 @@ while running:
             Cameraunlocked = True
 
 
-    #region idk
+    #region Velo printer
     TotalVelocityText = font.render("Total Velocity: " + SCV.CalcTotalVelo(), True, (255, 255, 255))
     SCV.screen.blit(TotalVelocityText, (50,50))
 
@@ -140,6 +141,24 @@ while running:
     if GUIToggleCD > 0:
         GUIToggleCD -= 1
     SCV.pg.display.flip()
+    vertices = [
+        (0, 0),
+        (1200, 0),
+        (1200, 400),
+        (0, 400),
+
+    ]
+
+    dh=ENTH.enthalpy(SCV.circlesList, vertices)
+    if stored_dh<dh:
+        print('gaining enthalpy in region +++++++++')
+
+    elif stored_dh>dh:
+        print('losing enthalpy ----------')
+    else:
+        print('enthalpy static')
+
+    stored_dh=dh
     #endregion
 
  #Gets a list of all pressed keys and does the actions for each one as described
