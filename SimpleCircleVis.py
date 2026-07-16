@@ -55,6 +55,8 @@ class Circle():
         self.radius = Radius
         self.color = Circle_Color
         self.uid = UID
+        self.NewX = self.xPosition + self.xVelocity
+        self.NewY = self.yPosition + self.yVelocity
     def getX(self):
         return self.xPosition
     def getY(self):
