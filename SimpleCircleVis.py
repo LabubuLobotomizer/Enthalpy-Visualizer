@@ -3,7 +3,8 @@ import numpy as np
 import random as rand
 
 def InitEngine(zFactor, gSize, sWidth, sHeight, CGirth):
-    #Setting global Variables
+    #Setting global Variables so we can call these functions in another file
+    #Makes this engine reusable across multiple projects
     global zoomFactor
     zoomFactor = zFactor
     global gridSize
@@ -94,6 +95,7 @@ class Circle():
         return ChunkX, ChunkY
     
 def SetChunks():
+    #This checks the x,y coordinates of each circle and assigns them to a chunk
     global chunklist, borderWidth, borderHeight, ChunkGirth
     chunklist = []
     for i in range((borderWidth // ChunkGirth)+1):
@@ -107,6 +109,7 @@ def SetChunks():
             Circle.updateChunk(RCircle, NewChunkX=ChunkX, NewChunkY=ChunkY)
 
 def drawBorder(BWidth, BHeight):
+    #Draws the border and grid, and basically the whole background
     global cameraViewX, cameraViewY, zoomFactor, gridSize
     #Draws a shaded box
     pg.draw.rect(screen, (60, 60, 65), (getScreenCoordinates(BWidth/-2, 0, cameraViewX, cameraViewY, zoomFactor)[0], getScreenCoordinates(0, BHeight/-2, cameraViewX, cameraViewY, zoomFactor)[1], BWidth*zoomFactor, BHeight*zoomFactor))
@@ -137,8 +140,6 @@ def getWorldCoordinates(screenX, screenY, cameraX, cameraY, zoomFactor):
     worldY = ((screenY - (screenHeight/2)) / zoomFactor) + cameraY
     return worldX, worldY
 
-#This function will go before anything else happens each frame to draw the grid on the screen behind the circles
-#Mostly put in place to create a reference for scale and position as you zoom out and move
 def draw_grid(grid_size, zoom_factor, camera_x, camera_y, color: tuple = (int, int, int)):
     #Im gonna start at 0,0 draw each vertical line, then go back the 0,0 and draw each horizontal line
     global screenWidth, screenHeight
@@ -192,65 +193,101 @@ def draw_grid(grid_size, zoom_factor, camera_x, camera_y, color: tuple = (int, i
         tempDrawY = getScreenCoordinates(0, tempY, camera_x, camera_y, zoom_factor)[1]
 
 def drawCircles(CameraX, CameraY, ZoomFactor):
+    #Draws circles, Lowest UID in list has the lowest Z order
     global circlesList, screenWidth, screenHeight
     for CurrentCircle in circlesList:
         #print(getScreenCoordinates(Circle.getX(CurrentCircle), Circle.getY(CurrentCircle), CameraX, CameraY, ZoomFactor))
         pg.draw.circle(screen, Circle.getColor(CurrentCircle), (getScreenCoordinates(Circle.getX(CurrentCircle), Circle.getY(CurrentCircle), CameraX, CameraY, ZoomFactor)), Circle.getRadius(CurrentCircle)*zoomFactor)
 
-def updateCircles():
-    #Defining things up here for optimization
+def runCirclesOnCirclesCollision():
+    #So this is the bulk of the engine, and the name is self explanatory
     global circlesList
     global chunklist
-    #First we check collision, but the second circle must make sure that it is not doing circles that are before the main circle in the list as to not double update teh collision
+    #QCircle is the "MainCircle" that we are iterating against
     for QCircle in circlesList:
         #Preparing a bunch of variables because it'll be faster to prepare them than to call the functions a bunch
+        #Sadly, this does make it harder to read, but its a LOT faster
         MainCircleX = Circle.getX(QCircle)
         MainCircleY = Circle.getY(QCircle)
         MainCircleR = Circle.getRadius(QCircle)
-        MainCircleMatrix = np.array([MainCircleX,MainCircleY])
-        #BCircle is the circle we are testing the main circle against before updating the main circle
-        ThisChunkX, ThisChunkY = Circle.findChunk(QCircle)
-        #List of Ids is the ones in the same chunk to test
+        MainCircleMatrix = np.array([MainCircleX,MainCircleY])#Numpy Array for the win
+        MainCircleVelocityMatrix = np.array([Circle.getXV(QCircle), Circle.getYV(QCircle)])
+        ThisChunkX, ThisChunkY = Circle.findChunk(QCircle) #This defines the chunk that the main circle is in
+        #List of NearbyCircles is the circles in the surrounding chunks that we are going to check for collisions
+        #We can load the same class in separate lists and modify or call it from both and it accuratly reflects the changes
         ListofNearbyCircles = []
+        #Using "enumerate" here is a big optimization
+        #enumerate turns "chunklist" into a list of tuples: (index in chunklist, the value at the index)
+        #This is useful, because now instead of ever having to call the index of the item we are looking at we have it saved in our for loop
+        #basically we are iterating through the for loop with x, but changing chunks everytime to the value of chunklist at x
+        #but its faster than updating them separately
         for x, chunks in enumerate(chunklist):
-            if x in range(ThisChunkX-1, ThisChunkX+2):
+            if x in range(ThisChunkX-1, ThisChunkX+2): #checks if the chunk we are currently checking is bordering the chunk our main circle is in on the left or right, or vertical to it
                 for y, subchunks in enumerate(chunks):
-                    if y in range(ThisChunkY-1, ThisChunkY+2):
-                        for Lcircle in subchunks:
-                            ListofNearbyCircles.append(Lcircle)
-        for BCircle in ListofNearbyCircles:
-            #The actual collision code
+                    if y in range(ThisChunkY-1, ThisChunkY+2): #checks if the chunk is bordering vertically or in the same row
+                        for Lcircle in subchunks: #goes through each circle in the chunk that we just verified is within range of needing to be checked
+                            ListofNearbyCircles.append(Lcircle) #adds each circle to a new list we have to check
+        #This is where we move onto actual collision code
+        for BCircle in ListofNearbyCircles: #BCircle is the circle we need to check if we are colliding, we only iterate through list of nearby circles
+            #here we check if the index of BCircle is greater than index of Qcircle
+            #This makes sure we dont double the collisions, or collide Qcircle with itself
+            #It may be faster to call the UID of each circle, but we don't have a proper benchmark system set up yet to test that theory
             if circlesList.index(BCircle) > circlesList.index(QCircle):
-                    MainCircleVelocityMatrix = np.array([Circle.getXV(QCircle), Circle.getYV(QCircle)])
+                    #We only define the necessary variables for distance calculation here for optimization reasons
                     SecondaryCircleX = Circle.getX(BCircle)
                     SecondaryCircleY = Circle.getY(BCircle)
                     SecondaryCircleR = Circle.getRadius(BCircle)
                     #Checking the distance between the two to see if collision occurs
-                    distanceBetweenCircles = (((MainCircleX-SecondaryCircleX)**2) + ((MainCircleY-SecondaryCircleY)**2))
+                    distanceBetweenCircles = (((MainCircleX-SecondaryCircleX)**2) + ((MainCircleY-SecondaryCircleY)**2)) 
+                    #Both sides are squared like you suggested
                     if distanceBetweenCircles < (MainCircleR+SecondaryCircleR)**2:
-                        #Now we have to do that complicated ish math, For now everything is perfectly elastic
+                        #Here we define more variables that wouldn't have needed to be defined if overlap wasn't there
                         SecondaryCircleMatrix = np.array([SecondaryCircleX,SecondaryCircleY])
                         SecondaryCircleVelocityMatrix = np.array([Circle.getXV(BCircle), Circle.getYV(BCircle)])
-                        normalVector = (MainCircleMatrix - SecondaryCircleMatrix) #Getting difference between them
+                        #This is not the definition of the normal vector, but first we get the relative position between them
+                        #We update this variable later, but it is more efficient to reuse variable than make new one for everything
+                        normalVector = (MainCircleMatrix - SecondaryCircleMatrix)
+                        #If np.linalg.norm(normalVector) returns 0, then that means that the circles have the exact same coordinates
+                        #If we dont have a special case for this we run into a divide by 0 error
                         if np.linalg.norm(normalVector) == 0:
+                            #Sets an arbitrary value if it is 0
                             normalVector = np.array([1, 0])
                         else:
-                            normalVector = normalVector / np.linalg.norm(normalVector) #Converting it to normal vector
-                        #Some like math thing about rotating the interaction to be 90* hit not the actual angle of contact
+                            #Here We actually turn the normalVector Variable into a normal Vector
+                            #A Normal vector is a vector who's point lies at 0,0 and the unit circle
+                            #But in this case we basically just mean it has a length of exactly 1
+                            normalVector = normalVector / np.linalg.norm(normalVector)
+                        #So for readability purposes, it would be better for this to read:
+                            #relativeVelocity = MainCircleVelocityMatrix - SecondaryCircle Velocity Matrix
+                            #projection = np.dot(relativeVelocity, normalVector)
+                        #But this is more optimized
+                        #The projection is the amount of the forced in the normal direction (so we ignore forces tangent to the collision)
                         projection = np.dot(MainCircleVelocityMatrix - SecondaryCircleVelocityMatrix, normalVector)
+                        
+                        #Because the projection already takes into account both circles velocities we dont need to call them again
+                        #We re-multiply the project by the normal vector because the projection is a scalar value not a matrix
+                        #We need to it be a matrix to do matrix addition/subtraction
+                        #Multiplying it by the normal breaks its value down into an x and y that we can work with
+                        #if we defined relative velocity as SecondaryCircleVelocityMatrix - MainCircleVelocityMatrix we would have the + sign in the first line and the - sign in the second
                         NewMainCircleVelocityMatrix = MainCircleVelocityMatrix - (projection * normalVector)
                         NewSecondaryCircleVelocityMatrix = SecondaryCircleVelocityMatrix + (projection * normalVector)
 
+                        #Updates the circles with the new velocity matrixes we just made them
                         Circle.updateVelo(QCircle, NewXV=NewMainCircleVelocityMatrix[0], NewYV=NewMainCircleVelocityMatrix[1])
                         Circle.updateVelo(BCircle, NewXV=NewSecondaryCircleVelocityMatrix[0], NewYV=NewSecondaryCircleVelocityMatrix[1])
                         
                         #Here we also have to separate overlapped circles
+                        #First we figure out how much they overlap by, then we push the main circle away
+                        #The proper way to do this is to push both away ~50% of the distance, but I was too lazy
                         overlap = MainCircleR+SecondaryCircleR - np.sqrt(((MainCircleX-SecondaryCircleX)**2) + ((MainCircleY-SecondaryCircleY)**2))
                         MainCircleX += normalVector[0] * overlap
                         MainCircleY += normalVector[1] * overlap
+                        #Updates the circles with the new positions
                         Circle.updatePos(QCircle, NewX=MainCircleX, NewY=MainCircleY)
+
+def runCirclesOnBorderCollision():
+    #This first step is reflecting the velocity if the edge of the circle is outside of the border
     global borderWidth, borderHeight
-    #Now we check if circles are colliding with edges of our border
     for CCircle in circlesList:
         if Circle.getX(CCircle) + Circle.getRadius(CCircle) > borderWidth/2:
             Circle.updateVelo(CCircle, NewXV=Circle.getXV(CCircle)*-1)
@@ -260,7 +297,11 @@ def updateCircles():
             Circle.updateVelo(CCircle, NewYV=Circle.getYV(CCircle)*-1)
         if Circle.getY(CCircle) + Circle.getRadius(CCircle) > 1*borderHeight/2:
             Circle.updateVelo(CCircle, NewYV=Circle.getYV(CCircle)*-1)
+
     #Now we gotta correct ones still outside of the border due to errors
+    #This teleports ones too far out back in, but also handles ones that would have collided mid frame
+    #This is handled by effectively dragging them back to where they intersected the border and moving the percent left in the frame
+    #But instead of doing that slow logic, we just reflect them because its the same result and faster
     for CCircle in circlesList:
         if Circle.getX(CCircle) + Circle.getRadius(CCircle) > borderWidth/2:
             if Circle.getX(CCircle) + Circle.getRadius(CCircle) > borderWidth:
@@ -282,11 +323,24 @@ def updateCircles():
                 Circle.updatePos(CCircle, NewY=((borderHeight/2) - Circle.getRadius(CCircle)))
             else:
                 Circle.updatePos(CCircle, NewY=(((borderHeight/2) - Circle.getRadius(CCircle)) - (Circle.getY(CCircle) + Circle.getRadius(CCircle) - borderHeight/2)))
+
+def updateCircles():
+    #Running Circle on Circle Collision, this reflects the velocity along the tangent of the collision
+    #This also nudges the circles apart if they are overlapping
+    runCirclesOnCirclesCollision()
+    #Running Circle on Border Collision
+    #Reflects circle off of border
+    #Teleports circle back into the border if it is outside of it
+    #Accurately handles mid frame collisions
+    runCirclesOnBorderCollision()
     #Now we finally actually move the circles
+    #This is self explanatory
     for PCircle in circlesList:
         Circle.updatePos(PCircle, NewX=Circle.getX(PCircle)+Circle.getXV(PCircle), NewY=Circle.getY(PCircle)+Circle.getYV(PCircle))
     
 def CalcTotalVelo():
+    #Just calculates the total momentum, I know it says velocity but I don't want to change the name of the function
+    #Just used for the text display
     global circlesList
     TotalVelo = 0
     for I in circlesList:
@@ -295,6 +349,9 @@ def CalcTotalVelo():
     return(str(TotalVelo))
 
 def getCircleTouchingMouse(mouseX, mouseY, cameraX, cameraY, zoomFactor):
+    #This is used for selecting circles
+    #Returns the mouse earliest in the list (furthest back in the z order)
+    #Returns None if no circle is being touched
     global circlesList
     for ACircle in circlesList:
         CircleScreenX, CircleScreenY = getScreenCoordinates(Circle.getX(ACircle), Circle.getY(ACircle), cameraX, cameraY, zoomFactor)
@@ -303,6 +360,8 @@ def getCircleTouchingMouse(mouseX, mouseY, cameraX, cameraY, zoomFactor):
     return None
 
 def getCircleByUID(UID):
+    #This function will return the circle with the given UID, or None if no such circle exists
+    #The UID is for uniquely identifying circles, and is assigned when the circle is created
     global circlesList
     for ACircle in circlesList:
         if Circle.getUID(ACircle) == UID:
