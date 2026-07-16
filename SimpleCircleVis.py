@@ -143,7 +143,22 @@ class Wall():
         return(self.WallDirection)
     def getWallNormal(self):
         return(self.WallNormal)
-    
+    def updateWallPositions(self, NewStartX = None, NewStartY = None, NewEndX = None, NewEndY = None):
+        if NewStartX is not None:
+            self.StartingX = NewStartX
+        if NewStartY is not None:
+            self.StartingY = NewStartY
+        if NewEndX is not None:
+            self.EndingX = NewEndX
+        if NewEndY is not None:
+            self.EndingY = NewEndY
+        self.WallStartPos = np.array([self.StartingX, self.StartingY])
+        self.WallEndPos = np.array([self.EndingX, self.EndingY])
+        self.WallRelativePos = self.WallEndPos - self.WallStartPos
+        self.WallLength = np.linalg.norm(self.WallRelativePos)
+        self.WallDirection = self.WallRelativePos / self.WallLength
+        self.WallNormal = np.array([-self.WallDirection[0], self.WallDirection[1]])
+        
 def SetChunks():
     #This checks the x,y coordinates of each circle and assigns them to a chunk
     global chunklist, borderWidth, borderHeight, ChunkGirth
@@ -249,11 +264,18 @@ def drawCircles(CameraX, CameraY, ZoomFactor):
         #print(getScreenCoordinates(Circle.getX(CurrentCircle), Circle.getY(CurrentCircle), CameraX, CameraY, ZoomFactor))
         pg.draw.circle(screen, Circle.getColor(CurrentCircle), (getScreenCoordinates(Circle.getX(CurrentCircle), Circle.getY(CurrentCircle), CameraX, CameraY, ZoomFactor)), Circle.getRadius(CurrentCircle)*zoomFactor)
 
+def customWallDrawer(drawnWall, CameraX, CameraY, ZoomFactor):
+    for i in range(int(Wall.getWallLength(drawnWall))):
+        CenterMatrix = (i*Wall.getWallDirection(drawnWall)) + Wall.getStartMatrix(drawnWall)
+        CenterA, CenterB = getScreenCoordinates(CenterMatrix[0], CenterMatrix[1], CameraX, CameraY, ZoomFactor)
+        CenterTuple = (CenterA, CenterB)
+        pg.draw.circle(screen, Wall.getColor(drawnWall), CenterTuple, max(1, ZoomFactor * Wall.getWidth(drawnWall)/2))
+
 def drawWalls(CameraX, CameraY, ZoomFactor):
     #Draws all of the walls
     global wallsList, screenWidth, screenHeight
     for CurrentWall in wallsList:
-        pg.draw.line(screen, Wall.getColor(CurrentWall), (getScreenCoordinates(Wall.getStartX(CurrentWall), Wall.getStartY(CurrentWall), CameraX, CameraY, ZoomFactor)), (getScreenCoordinates(Wall.getEndX(CurrentWall), Wall.getEndY(CurrentWall), CameraX, CameraY, ZoomFactor)), width= max(1, int(Wall.getWidth(CurrentWall) * zoomFactor)))
+        customWallDrawer(CurrentWall, CameraX, CameraY, ZoomFactor)
 
 def runCirclesOnCirclesCollision():
     #So this is the bulk of the engine, and the name is self explanatory

@@ -15,8 +15,9 @@ GuiVisible = True
 GUIToggleCD = 0
 selectedCircle = None
 # endregion
-
-
+WallStarted = None
+WallEnding = None
+TempMouseWall = SCV.Wall(0, 0, 0, 0, 15, (255,0,255))
 
 def camera_mov_and_circle_lock():
     global CircleLockCD
@@ -42,12 +43,20 @@ def camera_mov_and_circle_lock():
 
 def os_events():
     global selectedCircle
+    global WallStarted
+    global WallEnding
     for event in pg.event.get():
         if event.type == pg.QUIT:
             return False
         if event.type == pg.KEYDOWN:
             if event.key == pg.K_ESCAPE:
                 return False
+            if event.key == pg.K_l:
+                if WallStarted is not None:
+                    SCV.wallsList.append(SCV.Wall(WallStarted[0], WallStarted[1], WallEnding[0], WallEnding[1], 15, (255,0,255)))
+                    WallStarted = None
+                else:
+                    WallStarted = SCV.getWorldCoordinates(pg.mouse.get_pos()[0], pg.mouse.get_pos()[1], SCV.cameraViewX, SCV.cameraViewY, SCV.zoomFactor )
         #Mouse Input
         if event.type == pg.MOUSEBUTTONDOWN:
             #Left Clicking to create a circle
@@ -56,9 +65,9 @@ def os_events():
                 randXVelo = 0
                 randYVelo = 0
                 while randXVelo == 0:
-                    randXVelo = rand.randint(-10, 10)
+                    randXVelo = rand.randint(-20, 20)
                 while randYVelo == 0:
-                    randYVelo = rand.randint(-10, 10)
+                    randYVelo = rand.randint(-20, 20)
                 SCV.circlesList.append(SCV.Circle(circleWorld[0], circleWorld[1], (rand.randint(0,255), rand.randint(0,255), rand.randint(0,255)), rand.randint(15, 35), randXVelo, randYVelo, SCV.IDCounter))
                 SCV.IDCounter += 1
             #Right Clicking to select a circle
@@ -100,14 +109,16 @@ def circle_lock():
         CircleScreenX, CircleScreenY = SCV.getScreenCoordinates(SCV.Circle.getX(selectedCircle), SCV.Circle.getY(selectedCircle), SCV.cameraViewX, SCV.cameraViewY, SCV.zoomFactor)
         pg.draw.circle(SCV.screen, (255, 0, 0), (int(CircleScreenX), int(CircleScreenY)), int(SCV.Circle.getRadius(selectedCircle) * SCV.zoomFactor) + 5, 3)
 
-SCV.wallsList.append(SCV.Wall(250, 100, -100, 400, 25, (0, 255, 0)))
-SCV.wallsList.append(SCV.Wall(-500, 300, -100, 350, 5, (255, 0, 0)))
-SCV.wallsList.append(SCV.Wall(0, -300, 600, 300, 70, (0, 0, 255)))
-
 while running:
     pg_frames_and_screenfill()
 
     circle_lock()
+
+    if WallStarted is not None:
+        WallEnding = SCV.getWorldCoordinates(pg.mouse.get_pos()[0], pg.mouse.get_pos()[1], SCV.cameraViewX, SCV.cameraViewY, SCV.zoomFactor )
+        SCV.Wall.updateWallPositions(TempMouseWall, NewStartX = WallStarted[0], NewStartY = WallStarted[1], NewEndX = WallEnding[0], NewEndY= WallEnding[1])
+        SCV.customWallDrawer(TempMouseWall, SCV.cameraViewX, SCV.cameraViewY, SCV.zoomFactor)
+
     SCV.drawWalls(SCV.cameraViewX, SCV.cameraViewY, SCV.zoomFactor)
     #Draws the GUI if GuiVisible is True
     if GuiVisible:
