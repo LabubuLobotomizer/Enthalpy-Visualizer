@@ -5,8 +5,6 @@ import pygame as pg
 import random as rand
 import Enthalpy_Zones as ENTH
 from collections import deque
-# double ended queue, data structure for my resolve storing enthalpy values (bc it doesn't work with your collisions for some reason)
-
 
 #region startup/init
 SCV.InitEngine(1.0, 150, 1280, 720, 100)
@@ -161,23 +159,26 @@ while running:
             Cameraunlocked = True
 
 
-    #region Velo printer
-    TotalVelocityText = font.render("Total Velocity: " + SCV.CalcTotalVelo(), True, (255, 255, 255))
-    SCV.screen.blit(TotalVelocityText, (50,50))
+
+
+
 
     if CircleLockCD > 0:
         CircleLockCD -= 1
     if GUIToggleCD > 0:
         GUIToggleCD -= 1
-    SCV.pg.display.flip()
 
 
+    # region Enthalpy
     dh=ENTH.enthalpy(SCV.circlesList, Vertices)
     dh=dh*1000
     dh=int(dh)
     dh=dh/1000
     stored_enth_values.append(dh)
+    # endregion
 
+
+    #region bug fix
     if not more_than_5_frames:
         if len(stored_enth_values)>=10:
             more_than_5_frames=True
@@ -191,29 +192,18 @@ while running:
                 print(changes)
 
             elif (stored_enth_values[5]+1<stored_enth_values[1]) and (stored_enth_values[5]<stored_enth_values[2]) and (stored_enth_values[5]<stored_enth_values[0]) and (stored_enth_values[5]<stored_enth_values[3]) and (stored_enth_values[5]<stored_enth_values[4]):
-                print('enthalpy has fallen')
+                print('enthalpy has fallen, or particle has escaped')
                 print(stored_enth_values)
                 changes+=1
                 print(changes)
 
 
 
-
-
-    #     if stored_dh+5<dh:
-    #         print('gaining enthalpy in region +++++++++')
-    #         changes+=1
-    #
-    # elif stored_dh>dh+5:
-    #     print('losing enthalpy ----------')
-    #     changes+=1
-    #     print(changes)
-    # else:
-    #     print('enthalpy static')
-    #     print(changes)
-    # print(changes)
-    stored_dh=dh
     #endregion
+    TotalVelocityText = font.render("Total System Velocity:" + str(dh), True, (255, 255, 255))
+    SCV.screen.blit(TotalVelocityText, (50, 50))
+
+    SCV.pg.display.flip()
 
  #Gets a list of all pressed keys and does the actions for each one as described
     camera_mov_and_circle_lock()

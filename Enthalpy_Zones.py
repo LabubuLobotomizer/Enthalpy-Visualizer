@@ -16,7 +16,7 @@ def enthalpy(particles, vertices):
 
     total_inside_velo=0
     for p in inside_particles:
-        total_inside_velo+= abs(SCV.Circle.getXV(p)) + abs(SCV.Circle.getYV(p))
+        total_inside_velo+= (SCV.Circle.getXV(p)**2) + (SCV.Circle.getYV(p)**2)
     return total_inside_velo
 
 
