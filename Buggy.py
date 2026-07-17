@@ -3,10 +3,14 @@
 import pygame as pg
 import numpy as np
 import random as sixseven
+import Enthalpy_Zones as ENTH
+from collections import deque
+import SimpleCircleVis as SCV
 
-#change
+
 # region
 pg.init()
+font = pg.font.SysFont("Arial", 36)
 clock = pg.time.Clock()
 
 WIDTH=1280
@@ -212,6 +216,22 @@ class Particle():
         other.xVelocity, other.yVelocity = NewSecondaryCircleVelocityMatrix
     def display(self):
         print(self.xPosition, self.yPosition, self.xVelocity, self.yVelocity)
+    def check_overlap(self,other):
+        dist_squared = (self.xPosition - other.xPosition) ** 2 + (
+                    self.yPosition - other.yPosition) ** 2
+        if dist_squared+(self.radius+other.radius)**2/2 < (self.radius + other.radius) ** 2:
+            return True
+        return False
+    def overlap_resolve(self,other):
+        if self.check_overlap(other):
+            if self.xPosition>=other.yPosition:
+                self.xPosition-=self.radius
+                other.xPosition+=other.radius
+            else:
+                self.xPosition += self.radius
+                other.xPosition -= other.radius
+
+
 def particle_collisions_full(Particles, Walls):
     '''
     particles are a list of all particles and walls are well a list of all walls. This is assumed(supposed to put assumptions and things the function does in docstring but lwk don't need allat for now.
@@ -224,6 +244,7 @@ def particle_collisions_full(Particles, Walls):
             dist_squared=(circle.xPosition-second_circle.xPosition)**2+(circle.yPosition-second_circle.yPosition)**2
             if dist_squared < (circle.radius+second_circle.radius)**2:     #notice, this avoids sqrt, which is computationally expensive MIT OCW LOLOLOL
                 circle.collide(second_circle)
+            circle.overlap_resolve(second_circle)
         indie+=1
     for wall in Walls:
         for p in Particles:
@@ -256,6 +277,9 @@ top_wall=Wall(0, 0, WIDTH, wall_width)
 system_left=Wall((WIDTH*1/3),(HEIGHT/4), wall_width/2, HEIGHT/2)
 system_right=Wall((WIDTH*2/3),(HEIGHT/4), wall_width/2, HEIGHT/2)
 system_bottom=Wall((WIDTH*1/3),(HEIGHT*3/4)-wall_width/2, WIDTH/3+wall_width/4, wall_width/2)
+system_top=Wall((WIDTH*1/3),(HEIGHT/4), WIDTH/3+wall_width/4, wall_width/2 )
+
+vertices= [((WIDTH*1/3),(HEIGHT/4)),((WIDTH*2/3),(HEIGHT/4)),((WIDTH*2/3),(HEIGHT*3/4)),((WIDTH*1/3),(HEIGHT*3/4))]
 
 walls = [
     top_wall,
@@ -264,7 +288,8 @@ walls = [
     bottom_wall,
     system_right,
     system_left,
-    system_bottom
+    system_bottom,
+    system_top
 ]
 
 
@@ -279,8 +304,12 @@ particles=[]
 
 #endregion
 
-pg.display.flip()
-running=False
+
+running=True
+
+stored_enth_values=deque(maxlen=10)
+more_than_5_frames=False
+
 while running:
     clock.tick(60)
     screen.blit(background, (0,0))
@@ -294,8 +323,9 @@ while running:
         if event.type == pg.MOUSEBUTTONDOWN:
             if event.button == 1:
                 p=pg.mouse.get_pos()
-                # particles.append(Particle(p[0], p[1], 'White', sixseven.randint(5,10), sixseven.randint(-5,1000), sixseven.randint(-5,5)))
-                particles.append(Particle(p[0], p[1], 'White', 20, sixseven.randint(-5,5),0))
+                particles.append(Particle(p[0], p[1], 'White', sixseven.randint(5,20), sixseven.randint(-5,5), sixseven.randint(-5,5)))
+                # for n in range(100):
+                #     particles.append(Particle(sixseven.randint(20,WIDTH-20), sixseven.randint(20,HEIGHT-20), 'White', 20, sixseven.randint(-5,5),sixseven.randint(-5,5)))
 # endregion
     particle_collisions_full(particles, walls)
     # col(walls, particles)
@@ -303,6 +333,28 @@ while running:
         thing.draw()
         thing.updatePos()
 
+    #region enth
+    dh=ENTH.enthalpy(particles, vertices)
+    dh=dh*1000
+    dh=int(dh)
+    dh=dh/1000
+    stored_enth_values.append(dh)
 
+    if not more_than_5_frames:
+        if len(stored_enth_values)>=10:
+            more_than_5_frames=True
+
+
+    else:
+        if (stored_enth_values[5]==stored_enth_values[6]==stored_enth_values[7]==stored_enth_values[8]==stored_enth_values[9]):
+            if (stored_enth_values[5]>stored_enth_values[1]+1) and (stored_enth_values[5]>stored_enth_values[2]) and (stored_enth_values[5]>stored_enth_values[0])and (stored_enth_values[5]>stored_enth_values[3]) and (stored_enth_values[5]>stored_enth_values[4]):
+                print('enthalpy has risen')
+
+
+            elif (stored_enth_values[5]+1<stored_enth_values[1]) and (stored_enth_values[5]<stored_enth_values[2]) and (stored_enth_values[5]<stored_enth_values[0]) and (stored_enth_values[5]<stored_enth_values[3]) and (stored_enth_values[5]<stored_enth_values[4]):
+                print('enthalpy has fallen, or particle has escaped')
+                print(stored_enth_values)
+    TotalVelocityText = font.render("Total System Velocity:" + str(dh), True, (255, 255, 255))
+    screen.blit(TotalVelocityText, (50, 50))
+    #endregion
     pg.display.flip()
-
