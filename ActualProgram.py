@@ -1,7 +1,12 @@
+
+
 import SimpleCircleVis as SCV
 import pygame as pg
 import random as rand
 import Enthalpy_Zones as ENTH
+from collections import deque
+# double ended queue, data structure for my resolve storing enthalpy values (bc it doesn't work with your collisions for some reason)
+
 
 #region startup/init
 SCV.InitEngine(1.0, 150, 1280, 720, 100)
@@ -110,6 +115,30 @@ def circle_lock():
         CircleScreenX, CircleScreenY = SCV.getScreenCoordinates(SCV.Circle.getX(selectedCircle), SCV.Circle.getY(selectedCircle), SCV.cameraViewX, SCV.cameraViewY, SCV.zoomFactor)
         pg.draw.circle(SCV.screen, (255, 0, 0), (int(CircleScreenX), int(CircleScreenY)), int(SCV.Circle.getRadius(selectedCircle) * SCV.zoomFactor) + 5, 3)
 
+
+# region adding walls for enthalpy test:
+
+
+scale=150
+V1=(-scale,-scale)
+V2=(scale,-scale)
+V3=(scale,scale)
+V4=(-scale,scale)
+Vertices=[V1,V2,V3,V4]
+Wall1=SCV.Wall(V1[0], V1[1], V2[0], V2[1], 10, 'Orange', Permeability=1)
+Wall2 = SCV.Wall(V2[0], V2[1], V3[0], V3[1], 10, 'Orange', Permeability=1)
+Wall3 = SCV.Wall(V3[0], V3[1], V4[0], V4[1], 10, 'Orange', Permeability=1)
+Wall4 = SCV.Wall(V4[0], V4[1], V1[0], V1[1], 10, 'Orange', Permeability=1)
+SCV.wallsList.extend([Wall1, Wall2, Wall3, Wall4])
+
+
+
+
+# endregion
+
+changes = 0
+stored_enth_values=deque(maxlen=10)
+more_than_5_frames=False
 while running:
     pg_frames_and_screenfill()
 
@@ -141,23 +170,48 @@ while running:
     if GUIToggleCD > 0:
         GUIToggleCD -= 1
     SCV.pg.display.flip()
-    vertices = [
-        (0, 0),
-        (1200, 0),
-        (1200, 400),
-        (0, 400),
 
-    ]
 
-    dh=ENTH.enthalpy(SCV.circlesList, vertices)
-    if stored_dh<dh:
-        print('gaining enthalpy in region +++++++++')
+    dh=ENTH.enthalpy(SCV.circlesList, Vertices)
+    dh=dh*1000
+    dh=int(dh)
+    dh=dh/1000
+    stored_enth_values.append(dh)
 
-    elif stored_dh>dh:
-        print('losing enthalpy ----------')
+    if not more_than_5_frames:
+        if len(stored_enth_values)>=10:
+            more_than_5_frames=True
+
+
     else:
-        print('enthalpy static')
+        if (stored_enth_values[5]==stored_enth_values[6]==stored_enth_values[7]==stored_enth_values[8]==stored_enth_values[9]):
+            if (stored_enth_values[5]>stored_enth_values[1]+1) and (stored_enth_values[5]>stored_enth_values[2]) and (stored_enth_values[5]>stored_enth_values[0])and (stored_enth_values[5]>stored_enth_values[3]) and (stored_enth_values[5]>stored_enth_values[4]):
+                print('enthalpy has risen')
+                changes+=1
+                print(changes)
 
+            elif (stored_enth_values[5]+1<stored_enth_values[1]) and (stored_enth_values[5]<stored_enth_values[2]) and (stored_enth_values[5]<stored_enth_values[0]) and (stored_enth_values[5]<stored_enth_values[3]) and (stored_enth_values[5]<stored_enth_values[4]):
+                print('enthalpy has fallen')
+                print(stored_enth_values)
+                changes+=1
+                print(changes)
+
+
+
+
+
+    #     if stored_dh+5<dh:
+    #         print('gaining enthalpy in region +++++++++')
+    #         changes+=1
+    #
+    # elif stored_dh>dh+5:
+    #     print('losing enthalpy ----------')
+    #     changes+=1
+    #     print(changes)
+    # else:
+    #     print('enthalpy static')
+    #     print(changes)
+    # print(changes)
     stored_dh=dh
     #endregion
 
